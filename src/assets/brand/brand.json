@@ -1,0 +1,8 @@
+{
+  "_comment": "Заглушка (06_DESIGN_TOKENS §1): точные HEX и логотип передаёт владелец. После передачи меняются только переменные --brand-* в tokens.css.",
+  "approx": true,
+  "olive": "#7A8B3A",
+  "oliveDark": "#5C6B2A",
+  "blue": "#2F7FD8",
+  "fontName": "Inter"
+}

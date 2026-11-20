@@ -1,0 +1,93 @@
+/*
+ * Дизайн-токены Agro-SCADA Lite — из docs/spec/06_DESIGN_TOKENS.md.
+ * Значения --brand-* помечены [approx] в спеке: точные передаст владелец
+ * (src/assets/brand/brand.json) — тогда меняются ТОЛЬКО --brand-*.
+ */
+:root {
+  /* Бренд (06 §2) [approx] */
+  --brand-olive: #7a8b3a;
+  --brand-olive-dark: #5c6b2a;
+  --brand-blue: #2f7fd8;
+
+  /* Фоны и поверхности (06 §2) */
+  --bg-page: #efe6d6;
+  --bg-surface: #faf6ee;
+  --bg-sunken: #e4d9c5;
+
+  /* Текст (06 §2) */
+  --text-primary: #3a3a38;
+  --text-secondary: #6b675f;
+
+  /* Рамки и тени (06 §2) */
+  --border: #d8ccb6;
+  --shadow-card: 0 4px 14px rgba(60, 50, 30, 0.12);
+
+  /* Статусы данных (06 §2): good — обычный текст, отдельной переменной не нуждается */
+  --quality-stale: #9a948a;
+  --quality-offline: #9a948a;
+  --quality-error: #b5462f;
+  --quality-forecast: var(--brand-blue);
+  --quality-sim: #8a5cc2;
+
+  /* Приоритеты тревог (06 §2): цвет метки / фон строки */
+  --alarm-p1: #c62828;
+  --alarm-p1-bg: #f6d9d5;
+  --alarm-p2: #e07b00;
+  --alarm-p2-bg: #f8e6cc;
+  --alarm-p3: #c9a100;
+  --alarm-p3-bg: #f5edc8;
+  --alarm-p4: #5b7da8;
+  --alarm-p4-bg: #e3e8ee;
+
+  /* Состояния исполнителей (06 §2) */
+  --actuator-on: #3e9a4a;
+  --actuator-off: #9a948a;
+  --actuator-pending: var(--brand-blue);
+  --actuator-unknown: #c9a100;
+  --actuator-fault: #c62828;
+
+  /* Типографика (06 §3): Inter подключается локально (@fontsource/inter) */
+  --font-size-xs: 12px;
+  --font-size-base: 14px;
+  --font-size-md: 16px;
+  --font-size-lg: 20px;
+  --font-size-xl: 24px;
+  --font-size-xxl: 32px;
+  --font-weight-heading: 600;
+  --font-weight-body: 400;
+
+  /* Отступы: шкала 4 px (06 §4) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* Радиусы (06 §4) */
+  --radius-card: 14px;
+  --radius-btn: 10px;
+  --radius-cta: 50%;
+
+  /* Касание (06 §4) */
+  --touch-min: 44px;
+  --touch-cta: 56px;
+
+  /* Сетка дашборда (06 §4): число колонок по диапазону ширины */
+  --grid-cols-desktop: 12;
+  --grid-cols-tablet: 6;
+  --grid-cols-mobile: 1;
+
+  /* 3D-палитра (06 §5) */
+  --scene-soil-light: #8b6a47;
+  --scene-soil-dark: #6e5236;
+  --scene-plant: #6f9a3e;
+  --scene-metal: #4a4f55;
+  /* линии данных — --brand-blue (06 §5) */
+
+  /* Движение (06 §6) */
+  --motion-fast: 150ms;
+  --motion-base: 250ms;
+  --ease-out: ease-out;
+  --pulse-duration: 1.2s;
+}

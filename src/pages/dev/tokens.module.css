@@ -1,0 +1,251 @@
+/* Витрина токенов /dev/tokens (T02). Значения — только через переменные tokens.css. */
+
+.page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4) var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.title {
+  font-size: var(--font-size-xl);
+}
+
+.subtitle {
+  color: var(--text-secondary);
+  font-size: var(--font-size-base);
+}
+
+.sectionTitle {
+  font-size: var(--font-size-md);
+  margin-bottom: var(--space-3);
+  color: var(--brand-olive-dark);
+}
+
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-4);
+}
+
+.grid {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+
+.swatch {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.swatchColor {
+  height: 56px;
+  border-radius: var(--radius-btn);
+  border: 1px solid var(--border);
+}
+
+.swatchName {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+.swatchLabel {
+  font-size: var(--font-size-xs);
+}
+
+.logoStub {
+  display: block;
+  height: 40px;
+}
+
+/* Статусы данных */
+.statusRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  font-size: var(--font-size-md);
+  border-bottom: 1px solid var(--border);
+}
+
+.statusRow:last-child {
+  border-bottom: none;
+}
+
+.statusName {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  min-width: 110px;
+}
+
+.valueGood {
+  color: var(--text-primary);
+}
+
+.valueStale {
+  color: var(--quality-stale);
+}
+
+.valueError {
+  color: var(--quality-error);
+  text-decoration: line-through;
+}
+
+.valueForecast {
+  color: var(--quality-forecast);
+  border-bottom: 2px dashed var(--quality-forecast);
+}
+
+.simBadge {
+  display: inline-block;
+  background: var(--quality-sim);
+  color: var(--bg-surface);
+  border-radius: var(--radius-btn);
+  padding: 2px var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-heading);
+}
+
+/* Приоритеты тревог */
+.alarmRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-btn);
+  font-weight: var(--font-weight-heading);
+}
+
+/* Исполнители */
+.actuatorRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.actuatorItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-base);
+}
+
+.dot {
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-cta);
+  flex: none;
+}
+
+.dotOn {
+  background: var(--actuator-on);
+}
+
+.dotOff {
+  background: var(--actuator-off);
+}
+
+.dotPending {
+  background: var(--actuator-pending);
+  animation: pulse var(--pulse-duration) var(--ease-out) infinite;
+}
+
+.dotUnknown {
+  background: var(--actuator-unknown);
+}
+
+.dotFault {
+  background: var(--actuator-fault);
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* Типографика */
+.typeRow {
+  padding: var(--space-1) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.typeRow:last-child {
+  border-bottom: none;
+}
+
+.typeName {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+/* Формы */
+.shapeRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: center;
+}
+
+.shapeCard {
+  width: 120px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-surface);
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+.shapeCardRound {
+  border-radius: var(--radius-card);
+  border: 1px solid var(--border);
+}
+
+.shapeBtnRound {
+  border-radius: var(--radius-btn);
+  border: 1px solid var(--border);
+}
+
+.shapeCta {
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-cta);
+  background: var(--brand-olive);
+}
+
+.spacingScale {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-end;
+  margin-top: var(--space-3);
+}
+
+.spacingItem {
+  background: var(--brand-olive);
+  border-radius: 2px;
+  width: 28px;
+}
+
+.spacingName {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.note {
+  font-size: var(--font-size-base);
+  color: var(--text-secondary);
+  margin-top: var(--space-3);
+}

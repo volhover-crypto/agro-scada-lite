@@ -1,6 +1,6 @@
 /*
- * Базовые стили. Дизайн-токены из 06_DESIGN_TOKENS подключаются в T02 (tokens.css);
- * до этого здесь приблизительные значения спеки (цвета [approx]).
+ * Базовые стили. Токены — в tokens.css (06_DESIGN_TOKENS).
+ * Шрифт Inter подключается в main.tsx (@fontsource/inter 400/600).
  */
 :root {
   color-scheme: light;
@@ -19,6 +19,38 @@ body {
     'Segoe UI',
     Roboto,
     sans-serif;
-  color: #3a3a38;
-  background: #efe6d6;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-body);
+  color: var(--text-primary);
+  background: var(--bg-page);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: var(--font-weight-heading);
+  margin: 0;
+}
+
+p {
+  margin: 0;
+}
+
+/* Числовые значения (показания датчиков, время): одинаковая ширина цифр (06 §3) */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Уважаем системную настройку анимаций (06 §6) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
