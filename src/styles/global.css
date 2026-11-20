@@ -1,0 +1,24 @@
+/*
+ * Базовые стили. Дизайн-токены из 06_DESIGN_TOKENS подключаются в T02 (tokens.css);
+ * до этого здесь приблизительные значения спеки (цвета [approx]).
+ */
+:root {
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family:
+    'Inter',
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  color: #3a3a38;
+  background: #efe6d6;
+}

@@ -14,23 +14,23 @@ React + TypeScript (strict) + Vite; данные — TanStack Query, состо�
 
 ## Команды
 
-| Команда | Назначение |
-|---|---|
-| `npm run dev` | dev-сервер (мок включён) |
-| `npm run build` | прод-сборка в `dist/` (base `/dash/`) |
-| `npm run preview` | предпросмотр сборки |
-| `npm run lint` | ESLint + проверка форматирования Prettier |
-| `npm run test` | Vitest, одноразовый прогон |
-| `npm run e2e` | Playwright (сначала `npx playwright install`) |
-| `npm run gen:api` | генерация типов API из контракта (с T03) |
+| Команда           | Назначение                                    |
+| ----------------- | --------------------------------------------- |
+| `npm run dev`     | dev-сервер (мок включён)                      |
+| `npm run build`   | прод-сборка в `dist/` (base `/dash/`)         |
+| `npm run preview` | предпросмотр сборки                           |
+| `npm run lint`    | ESLint + проверка форматирования Prettier     |
+| `npm run test`    | Vitest, одноразовый прогон                    |
+| `npm run e2e`     | Playwright (сначала `npx playwright install`) |
+| `npm run gen:api` | генерация типов API из контракта (с T03)      |
 
 ## Переменные окружения
 
-| Переменная | dev | prod | Смысл |
-|---|---|---|---|
-| `VITE_USE_MOCK` | `true` | `false` | мок (MSW) или реальный API |
-| `VITE_API_BASE` | `/webhook` | `/webhook` | базовый URL API |
-| `VITE_BASE_PATH` | `/` | `/dash/` | base path сборки |
+| Переменная       | dev        | prod       | Смысл                      |
+| ---------------- | ---------- | ---------- | -------------------------- |
+| `VITE_USE_MOCK`  | `true`     | `false`    | мок (MSW) или реальный API |
+| `VITE_API_BASE`  | `/webhook` | `/webhook` | базовый URL API            |
+| `VITE_BASE_PATH` | `/`        | `/dash/`   | base path сборки           |
 
 Секретов в репозитории нет; персональные значения — через `.env.local` (в `.gitignore`).
 

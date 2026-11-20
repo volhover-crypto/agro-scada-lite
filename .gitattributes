@@ -1,0 +1,13 @@
+# Единые переводы строк, чтобы не было шума CRLF/LF в диффах (Windows-хосты)
+* text=auto eol=lf
+
+# Бинарные ассеты
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg -text
+*.woff binary
+*.woff2 binary
+*.webmanifest -text

@@ -1,0 +1,14 @@
+# Артефакты
+dist
+coverage
+playwright-report
+test-results
+.metrics
+
+# Копия пакета владельца и контракт — не переформатируем
+docs/spec/
+contract/
+
+# Сгенерированное
+package-lock.json
+src/api/types.gen.ts
