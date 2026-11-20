@@ -1,0 +1,20 @@
+# Сборка и зависимости
+node_modules/
+dist/
+
+# Тесты
+coverage/
+playwright-report/
+test-results/
+
+# Снапшоты метрик качества (crapper/dryer/mutator)
+.metrics/
+
+# Локальные окружения (секреты), базовые .env.* с дефолтами — в репозитории
+.env
+.env.local
+.env.*.local
+
+# Прочее
+*.tsbuildinfo
+.DS_Store

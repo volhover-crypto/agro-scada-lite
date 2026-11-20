@@ -1,0 +1,391 @@
+openapi: 3.0.3
+info:
+  title: Agro-SCADA Lite — API дашборда (n8n webhooks)
+  version: 1.0.0
+  description: |
+    Единственный источник правды для фронтенда. Базовый путь /webhook.
+    Все ответы JSON, время ISO 8601 с поясом. Авторизация — Bearer-токен из /auth/login.
+    Ошибка: { "error": { "code": "...", "message": "..." } }.
+    Источник: 08_BACKEND_HANDOFF v1 (+ BR-1, BR-2). Дата: 20.11.2026.
+servers:
+  - url: /webhook
+security:
+  - bearer: []
+components:
+  securitySchemes:
+    bearer: { type: http, scheme: bearer }
+  responses:
+    Error401: { description: Нет или истёк токен, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    Error422: { description: Бизнес-ошибка, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string, enum: [UNAUTHORIZED, NOT_FOUND, VALIDATION, MODE_MANUAL, DURATION_OVER_MAX, DURATION_REQUIRED, NOT_APPROVED, ALREADY_FINAL, RATE_LIMIT] }
+            message: { type: string, example: "Максимум 4 ч" }
+    Quality: { type: string, enum: [good, stale, offline, out_of_range, sensor_error, sim] }
+    LinkStatus: { type: string, enum: [online, stale, offline] }
+    Object:
+      type: object
+      properties:
+        id: { type: integer }
+        farm_id: { type: integer }
+        name: { type: string, example: "Насосная-1" }
+        object_type: { type: string, enum: [vineyard, orchard, greenhouse, pump_station, field, other] }
+        lat: { type: number }
+        lon: { type: number }
+        tz: { type: string, example: Europe/Moscow }
+    Post:
+      type: object
+      properties:
+        id: { type: integer }
+        object_id: { type: integer }
+        name: { type: string, example: "Пост 3" }
+        plot_name: { type: string, example: "Участок Б" }
+        lat: { type: number }
+        lon: { type: number }
+        scene_x: { type: number, nullable: true }
+        scene_y: { type: number, nullable: true }
+        worst_status: { type: string, enum: [ok, warn, alarm, offline] }
+    Modem:
+      type: object
+      properties:
+        dev_eui: { type: string, example: "70B3D58FF0031A01" }
+        dev_name: { type: string }
+        object_id: { type: integer }
+        lorawan_class: { type: string, enum: [A, C] }
+        uplink_interval_s: { type: integer, example: 900 }
+        bat_mv: { type: integer, nullable: true }
+        margin_db: { type: number, nullable: true }
+        receptions: { type: object, additionalProperties: { type: object, properties: { rssi: { type: number }, snr: { type: number } } } }
+        last_seen: { type: string, format: date-time }
+        link_status: { $ref: '#/components/schemas/LinkStatus' }
+    Channel:
+      type: object
+      properties:
+        id: { type: integer }
+        dev_eui: { type: string }
+        param_code: { type: integer, example: 3 }
+        param_name: { type: string, example: "Влажность грунта" }
+        unit: { type: string, example: "%" }
+        level_cm: { type: integer, example: -10 }
+        sensor_no: { type: integer, example: 1 }
+        status: { type: string, enum: [assigned, unassigned, unknown_code] }
+        last_value: { type: number, nullable: true }
+        last_ts: { type: string, format: date-time, nullable: true }
+        tag_id: { type: string, example: "70B3D58FF0031A01/3/-10/1" }
+    Binding:
+      type: object
+      required: [channel_id, post_id]
+      properties:
+        id: { type: integer, readOnly: true }
+        channel_id: { type: integer }
+        post_id: { type: integer }
+        display_name: { type: string, example: "Влажность грунта −10 см №1" }
+        range_min: { type: number }
+        range_max: { type: number }
+        offset: { type: number, default: 0 }
+        factor: { type: number, default: 1 }
+        valid_from: { type: string, format: date-time, readOnly: true }
+        valid_to: { type: string, format: date-time, nullable: true, readOnly: true }
+    TagValue:
+      type: object
+      properties:
+        tag_id: { type: string }
+        name: { type: string }
+        post_id: { type: integer, nullable: true }
+        unit: { type: string }
+        value: { type: number, nullable: true }
+        quality: { $ref: '#/components/schemas/Quality' }
+        kind: { type: string, enum: [fact, forecast] }
+        origin: { type: string, enum: [live, backlog] }
+        ts_measured: { type: string, format: date-time, nullable: true }
+        ts_received: { type: string, format: date-time }
+    Series:
+      type: object
+      properties:
+        tag_id: { type: string }
+        unit: { type: string }
+        points: { type: array, items: { type: array, items: {}, example: ["2026-11-20T09:00:00+03:00", 27.4, "good"] } }
+    Actuator:
+      type: object
+      properties:
+        id: { type: integer }
+        dev_eui: { type: string }
+        output_no: { type: integer }
+        type: { type: string, enum: [pump, valve, fan, window, starter, relay] }
+        name: { type: string, example: "Клапан 3" }
+        post_id: { type: integer }
+        mode: { type: string, enum: [auto, manual] }
+        mode_changed_at: { type: string, format: date-time }
+        set_state: { type: string, enum: [on, off, open, closed, intermediate] }
+        fact_state: { type: string, enum: [on, off, open, closed, intermediate, pending, unknown, fault] }
+        fact_until: { type: string, format: date-time, nullable: true }
+        default_duration_s: { type: integer, nullable: true }
+        max_duration_s: { type: integer, nullable: true }
+        commands: { type: array, items: { $ref: '#/components/schemas/CommandDef' } }
+    CommandDef:
+      type: object
+      properties:
+        id: { type: integer }
+        actuator_id: { type: integer }
+        action: { type: string, enum: [on, off, open, close] }
+        confirm_policy: { type: string, enum: [none, manual_only, manual_and_rule_approval, always] }
+    CommandStatus: { type: string, enum: [created, awaiting_confirm, queued, sent_gw, acked, completed, cancelled, superseded, timeout, rejected] }
+    Command:
+      type: object
+      properties:
+        uuid: { type: string }
+        cmd_id: { type: integer }
+        command_def_id: { type: integer }
+        source: { type: string, enum: [manual, schedule, rule] }
+        duration_s: { type: integer, nullable: true }
+        status: { $ref: '#/components/schemas/CommandStatus' }
+        status_history: { type: array, items: { type: object, properties: { status: { $ref: '#/components/schemas/CommandStatus' }, ts: { type: string, format: date-time } } } }
+        result_code: { type: integer, nullable: true }
+        expires_at: { type: string, format: date-time, nullable: true }
+        warnings: { type: array, items: { type: string, enum: [MODEM_OFFLINE, SUPERSEDED_PREVIOUS] } }
+        created_by: { type: string }
+        created_at: { type: string, format: date-time }
+    CommandCreate:
+      type: object
+      required: [command_def_id, idempotency_key]
+      properties:
+        command_def_id: { type: integer }
+        duration_s: { type: integer }
+        idempotency_key: { type: string, example: "ui-7c1e-001" }
+    Rule:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        condition: { type: object, example: { tag_id: "70B3D58FF0031A01/3/-10/1", op: "<", value: 25 } }
+        action: { type: object, example: { command_def_id: 12, duration_s: 2400 } }
+        hysteresis: { type: number, example: 5 }
+        min_pause_s: { type: integer, example: 3600 }
+        on_no_data: { type: string, enum: [skip, fallback_schedule] }
+        fallback_schedule_id: { type: integer, nullable: true }
+        enabled: { type: boolean }
+        approval_status: { type: string, enum: [pending, approved] }
+        last_fired_at: { type: string, format: date-time, nullable: true }
+    Schedule:
+      type: object
+      properties:
+        id: { type: integer }
+        command_def_id: { type: integer }
+        time: { type: string, example: "06:00" }
+        days: { type: array, items: { type: integer, minimum: 1, maximum: 7 } }
+        duration_s: { type: integer }
+        enabled: { type: boolean }
+        approval_status: { type: string, enum: [pending, approved] }
+    Alarm:
+      type: object
+      properties:
+        id: { type: integer }
+        alarm_def_id: { type: integer }
+        type: { type: string, enum: [threshold, rate, link, cmd_unacked, state_mismatch, modem_immediate] }
+        priority: { type: integer, minimum: 1, maximum: 4 }
+        object_id: { type: integer }
+        post_id: { type: integer, nullable: true }
+        message: { type: string, example: "Давление 1,2 бар ниже 1,5" }
+        state: { type: string, enum: [active_unacked, active_acked, cleared_unacked, closed] }
+        value: { type: number, nullable: true }
+        raised_at: { type: string, format: date-time }
+        acked_by: { type: string, nullable: true }
+        acked_at: { type: string, format: date-time, nullable: true }
+        cleared_at: { type: string, format: date-time, nullable: true }
+        escalation_step: { type: integer }
+    AuditEntry:
+      type: object
+      properties:
+        id: { type: integer }
+        ts: { type: string, format: date-time }
+        actor: { type: string }
+        event: { type: string }
+        entity: { type: string }
+        entity_id: { type: string }
+        before: { type: object, nullable: true }
+        after: { type: object, nullable: true }
+    Updates:
+      type: object
+      properties:
+        server_ts: { type: string, format: date-time }
+        tags: { type: array, items: { $ref: '#/components/schemas/TagValue' } }
+        commands: { type: array, items: { $ref: '#/components/schemas/Command' } }
+        alarms: { type: array, items: { $ref: '#/components/schemas/Alarm' } }
+        actuators: { type: array, items: { $ref: '#/components/schemas/Actuator' } }
+        modems: { type: array, items: { $ref: '#/components/schemas/Modem' } }
+        client_flags: { type: object, properties: { sim_mode: { type: boolean } } }
+    Dashboard:
+      type: object
+      properties:
+        id: { type: integer }
+        object_id: { type: integer }
+        name: { type: string }
+        layout: { type: array, items: { type: object, description: "WidgetConfig из 07_WIDGETS_SPEC" } }
+paths:
+  /auth/login:
+    post:
+      security: []
+      requestBody: { content: { application/json: { schema: { type: object, required: [login, password], properties: { login: { type: string }, password: { type: string } } } } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object, properties: { token: { type: string }, expires_at: { type: string, format: date-time }, user: { type: object, properties: { id: { type: integer }, login: { type: string } } } } } } } }
+        '401': { $ref: '#/components/responses/Error401' }
+  /auth/logout:
+    post: { responses: { '204': { description: OK } } }
+  /objects:
+    get: { responses: { '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Object' } } } } }, '401': { $ref: '#/components/responses/Error401' } } }
+  /objects/{id}:
+    put:
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      requestBody: { content: { application/json: { schema: { $ref: '#/components/schemas/Object' } } } }
+      responses: { '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Object' } } } } }
+  /posts:
+    get:
+      parameters: [{ name: object_id, in: query, schema: { type: integer } }]
+      responses: { '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Post' } } } } } }
+    post:
+      requestBody: { content: { application/json: { schema: { $ref: '#/components/schemas/Post' } } } }
+      responses: { '201': { description: Создано, content: { application/json: { schema: { $ref: '#/components/schemas/Post' } } } } }
+  /modems:
+    get:
+      parameters: [{ name: object_id, in: query, schema: { type: integer } }]
+      responses: { '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Modem' } } } } } }
+  /channels:
+    get:
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [assigned, unassigned, unknown_code] } }
+        - { name: dev_eui, in: query, schema: { type: string } }
+      responses: { '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Channel' } } } } } }
+  /bindings:
+    post:
+      description: Создаёт привязку; активная привязка канала закрывается (valid_to=now).
+      requestBody: { content: { application/json: { schema: { $ref: '#/components/schemas/Binding' } } } }
+      responses: { '201': { description: Создано, content: { application/json: { schema: { $ref: '#/components/schemas/Binding' } } } }, '422': { $ref: '#/components/responses/Error422' } }
+  /tags/current:
+    get:
+      parameters: [{ name: ids, in: query, required: true, description: "tag_id через запятую", schema: { type: string } }]
+      responses: { '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/TagValue' } } } } } }
+  /tags/history:
+    get:
+      parameters:
+        - { name: ids, in: query, required: true, description: "до 8 tag_id через запятую", schema: { type: string } }
+        - { name: from, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: agg, in: query, schema: { type: string, enum: [raw, avg, min, max], default: raw } }
+        - { name: step, in: query, schema: { type: string, enum: [15m, 1h, 1d], default: 1h } }
+      responses: { '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Series' } } } } }, '422': { $ref: '#/components/responses/Error422' } }
+  /actuators:
+    get:
+      parameters: [{ name: object_id, in: query, schema: { type: integer } }]
+      responses: { '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Actuator' } } } } } }
+  /actuators/{id}/mode:
+    put:
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      requestBody: { content: { application/json: { schema: { type: object, required: [mode], properties: { mode: { type: string, enum: [auto, manual] } } } } } }
+      responses: { '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Actuator' } } } } }
+  /commands:
+    post:
+      description: Идемпотентно по idempotency_key (повтор → 200 с той же командой).
+      requestBody: { content: { application/json: { schema: { $ref: '#/components/schemas/CommandCreate' } } } }
+      responses:
+        '201': { description: Создано, content: { application/json: { schema: { $ref: '#/components/schemas/Command' } } } }
+        '200': { description: Повтор ключа, content: { application/json: { schema: { $ref: '#/components/schemas/Command' } } } }
+        '422': { $ref: '#/components/responses/Error422' }
+    get:
+      parameters:
+        - { name: actuator_id, in: query, schema: { type: integer } }
+        - { name: limit, in: query, schema: { type: integer, default: 20 } }
+      responses: { '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Command' } } } } } }
+  /commands/{uuid}:
+    get:
+      parameters: [{ name: uuid, in: path, required: true, schema: { type: string } }]
+      responses: { '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Command' } } } } }
+  /commands/{uuid}/confirm:
+    post:
+      parameters: [{ name: uuid, in: path, required: true, schema: { type: string } }]
+      responses: { '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Command' } } } }, '422': { $ref: '#/components/responses/Error422' } }
+  /commands/{uuid}/cancel:
+    post:
+      parameters: [{ name: uuid, in: path, required: true, schema: { type: string } }]
+      responses: { '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Command' } } } }, '422': { $ref: '#/components/responses/Error422' } }
+  /rules:
+    get: { responses: { '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Rule' } } } } } } }
+    post:
+      requestBody: { content: { application/json: { schema: { $ref: '#/components/schemas/Rule' } } } }
+      responses: { '201': { description: Создано, content: { application/json: { schema: { $ref: '#/components/schemas/Rule' } } } } }
+  /rules/{id}:
+    put:
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      requestBody: { content: { application/json: { schema: { $ref: '#/components/schemas/Rule' } } } }
+      responses: { '200': { description: "OK (изменение сбрасывает approval_status в pending)", content: { application/json: { schema: { $ref: '#/components/schemas/Rule' } } } } }
+  /rules/{id}/approve:
+    post:
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses: { '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Rule' } } } } }
+  /schedules:
+    get: { responses: { '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Schedule' } } } } } } }
+    post:
+      requestBody: { content: { application/json: { schema: { $ref: '#/components/schemas/Schedule' } } } }
+      responses: { '201': { description: "Создано; warnings: [OVERLAP] при пересечении", content: { application/json: { schema: { $ref: '#/components/schemas/Schedule' } } } } }
+  /schedules/{id}/approve:
+    post:
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses: { '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Schedule' } } } } }
+  /alarms:
+    get:
+      parameters:
+        - { name: state, in: query, schema: { type: string, description: "через запятую" } }
+        - { name: priority, in: query, schema: { type: string } }
+        - { name: object_id, in: query, schema: { type: integer } }
+      responses: { '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Alarm' } } } } } }
+  /alarms/{id}/ack:
+    post:
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses: { '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Alarm' } } } } }
+  /updates:
+    get:
+      description: Изменения с момента since. UI опрашивает 30–60 с; при активной команде — 5 с. Следующий since = server_ts.
+      parameters: [{ name: since, in: query, required: true, schema: { type: string, format: date-time } }, { name: object_id, in: query, schema: { type: integer } }]
+      responses: { '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Updates' } } } } }
+  /dashboards:
+    get:
+      parameters: [{ name: object_id, in: query, schema: { type: integer } }]
+      responses: { '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Dashboard' } } } } } }
+    post:
+      requestBody: { content: { application/json: { schema: { $ref: '#/components/schemas/Dashboard' } } } }
+      responses: { '201': { description: Создано, content: { application/json: { schema: { $ref: '#/components/schemas/Dashboard' } } } } }
+  /dashboards/{id}:
+    put:
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      requestBody: { content: { application/json: { schema: { $ref: '#/components/schemas/Dashboard' } } } }
+      responses: { '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Dashboard' } } } } }
+  /settings/{section}:
+    get:
+      parameters: [{ name: section, in: path, required: true, schema: { type: string, enum: [command_defs, alarm_defs, chains, channels, client, param_dict, actuators] } }]
+      responses: { '200': { description: "Массив/объект раздела", content: { application/json: { schema: { type: object } } } } }
+    put:
+      parameters: [{ name: section, in: path, required: true, schema: { type: string } }]
+      requestBody: { content: { application/json: { schema: { type: object } } } }
+      responses: { '200': { description: OK } }
+  /audit:
+    get:
+      parameters:
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+        - { name: entity, in: query, schema: { type: string } }
+        - { name: actor, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, default: 100 } }
+        - { name: offset, in: query, schema: { type: integer, default: 0 } }
+      responses: { '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/AuditEntry' } } } } } }
+  /export:
+    get:
+      description: should. CSV.
+      parameters:
+        - { name: ids, in: query, required: true, schema: { type: string } }
+        - { name: from, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date-time } }
+      responses: { '200': { description: CSV, content: { text/csv: { schema: { type: string } } } } }
