@@ -13,7 +13,14 @@ import {
   type ScheduleT,
   type SeedTag,
 } from './seed'
-import { journalAdd, journalSince, store, touch } from './store'
+import {
+  journalAdd,
+  journalSince,
+  readDashboardOverrides,
+  store,
+  touch,
+  writeDashboardOverride,
+} from './store'
 import { iso, uuid } from './util'
 
 /*
@@ -646,10 +653,13 @@ export const handlers = [
     const g = guard(request)
     if (g) return g
     const oid = new URL(request.url).searchParams.get('object_id')
-    const list = oid
-      ? store.seed.dashboards.filter((d) => d.object_id === Number(oid))
-      : store.seed.dashboards
-    return HttpResponse.json(list)
+    // сохранённые layout (D-30) поверх seed
+    const overrides = readDashboardOverrides()
+    const list = store.seed.dashboards.map((d) =>
+      overrides[String(d.id)] != null ? { ...d, layout: overrides[String(d.id)] } : d,
+    )
+    const filtered = oid ? list.filter((d) => d.object_id === Number(oid)) : list
+    return HttpResponse.json(filtered)
   }),
 
   http.post(BASE + '/dashboards', async ({ request }) => {
@@ -682,6 +692,7 @@ export const handlers = [
       { name: d.name },
     )
     Object.assign(d, body)
+    if (body.layout != null) writeDashboardOverride(d.id, body.layout)
     return HttpResponse.json(d)
   }),
 

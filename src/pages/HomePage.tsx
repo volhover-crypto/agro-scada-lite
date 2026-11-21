@@ -1,11 +1,29 @@
-import { ru } from '@/i18n/ru'
+import { useActuators } from '@/api/endpoints/actuators'
+import { useAlarms } from '@/api/endpoints/alarms'
+import { useModems } from '@/api/endpoints/modems'
+import { useQuery } from '@tanstack/react-query'
+import type { components } from '@/api/types.gen'
+import { api } from '@/api/client'
+import { OverviewPage } from './OverviewPage'
 
-// Обзор объектов появится в T09; пока — ориентир по доступному
+type PostT = components['schemas']['Post']
+
+// Обзор (T09): данные для карточек
 export function HomePage() {
+  const { data: posts } = useQuery({
+    queryKey: ['posts'],
+    queryFn: () => api.get<PostT[]>('/posts'),
+  })
+  const { data: modems } = useModems()
+  const { data: alarms } = useAlarms()
+  const { data: actuators } = useActuators()
+
   return (
-    <main>
-      <h1>{ru.appTitle}</h1>
-      <p>{ru.shell.overviewNote}</p>
-    </main>
+    <OverviewPage
+      posts={posts ?? []}
+      modems={modems ?? []}
+      alarms={alarms ?? []}
+      actuators={actuators ?? []}
+    />
   )
 }

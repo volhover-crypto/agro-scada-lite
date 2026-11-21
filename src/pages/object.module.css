@@ -1,0 +1,78 @@
+/* Страница объекта (T09) */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.title {
+  font-size: var(--font-size-xl);
+}
+
+.type {
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-body);
+  font-size: var(--font-size-md);
+}
+
+.viewSwitch {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.viewBtn {
+  font: inherit;
+  min-height: var(--touch-min);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-btn);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.viewBtnActive {
+  background: var(--brand-olive);
+  border-color: var(--brand-olive);
+  color: var(--bg-surface);
+  font-weight: var(--font-weight-heading);
+}
+
+.link {
+  font-size: var(--font-size-base);
+  border-radius: var(--radius-btn);
+  padding: var(--space-2) var(--space-3);
+}
+
+.linkOk {
+  background: var(--bg-surface);
+  color: var(--actuator-on);
+  border: 1px solid var(--border);
+}
+
+.linkBad {
+  background: var(--alarm-p3-bg);
+  color: var(--alarm-p3);
+  border: 1px solid var(--alarm-p3);
+}
+
+.tbd {
+  background: var(--bg-surface);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-card);
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: flex-start;
+  color: var(--text-secondary);
+}

@@ -17,7 +17,7 @@ test('вход demo/demo ведёт в приложение', async ({ page }) =
   await page.getByLabel('Логин').fill('demo')
   await page.getByLabel('Пароль').fill('demo')
   await page.getByRole('button', { name: 'Войти' }).click()
-  await expect(page.getByRole('heading', { level: 1, name: 'Agro-SCADA Lite' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Обзор' })).toBeVisible()
 })
 
 test('неверные данные — сообщение об ошибке', async ({ page }) => {

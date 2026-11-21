@@ -35,7 +35,10 @@ export const router = createBrowserRouter(
       children: [
         { index: true, element: <HomePage /> },
         { path: 'o', element: <ObjectsRedirect /> },
-        { path: 'o/:objectId', element: <StubPage title={ru.shell.navObjects} task="T09–T11" /> },
+        {
+          path: 'o/:objectId',
+          lazy: () => import('@/pages/ObjectPage').then((m) => ({ Component: m.ObjectPage })),
+        },
         { path: 'o/:objectId/p/:postId', element: <StubPage title="Пост" task="T11" /> },
         { path: 'a/:actuatorId', element: <StubPage title="Устройство" task="T12" /> },
         { path: 'alarms', element: <StubPage title={ru.shell.navAlarms} task="T13" /> },

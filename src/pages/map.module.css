@@ -1,0 +1,29 @@
+/* Карта объекта (T09) */
+
+.map {
+  height: 420px;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--border);
+  z-index: 0; /* не перекрывает шапку/панели */
+}
+
+.hint {
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  margin-bottom: var(--space-2);
+}
+
+/* Маркер поста: цветной круг с белой обводкой */
+.marker {
+  background: none;
+  border: none;
+}
+
+.marker span {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-cta);
+  border: 2px solid var(--bg-surface);
+  box-shadow: var(--shadow-card);
+}

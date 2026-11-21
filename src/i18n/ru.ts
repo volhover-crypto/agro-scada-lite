@@ -61,6 +61,39 @@ export const ru = {
     gaugeAria: '{title}: {value} {unit}',
   },
 
+  // Обзор (T09, 05 §2)
+  overview: {
+    postsOnline: '{online} из {total} постов онлайн',
+    alarms: 'Тревоги: {n}',
+    alarmsP: 'P{p}: {n}',
+    running: 'Работают: {n}',
+    empty: 'Объектов нет',
+    addObject: 'Добавить объект',
+  },
+
+  // Страница объекта (T09, 05 §3)
+  objectPage: {
+    view3d: '3D-сцена',
+    viewDashboard: 'Дашборд',
+    viewMap: 'Карта',
+    linkOk: 'Связь с объектом: все модемы онлайн',
+    linkPartial: 'Связь с объектом: {online} из {total} модемов',
+    linkNone: 'Нет связи с объектом',
+    edit: 'Редактировать',
+    save: 'Сохранить',
+    cancel: 'Отмена',
+    addWidget: 'Добавить виджет',
+    widgetKind: 'Вид виджета',
+    widgetTags: 'Теги (до 8)',
+    widgetThreshold: 'Порог',
+    widgetTitle: 'Заголовок',
+    postPopup: 'Пост {name} · {plot}',
+    openPost: 'Открыть пост',
+    mapHint: 'Маркеры постов окрашены по худшему статусу их параметров',
+    tbd3d: '3D-сцена будет реализована в задаче T10',
+    noDashboard: 'Дашборд пуст — нажмите «Редактировать» и добавьте виджеты',
+  },
+
   // Страница графиков (T08, 05 §7)
   charts: {
     maxSeries: 'Не более {max} рядов',

@@ -73,5 +73,5 @@ test('баннер P1 в pressure_drop: появляется, «Открыть»
 
   await banner.getByRole('button', { name: 'Открыть' }).click()
   await expect(page).toHaveURL(/\/o\/2$/)
-  await expect(page.getByRole('heading', { level: 1, name: 'Объекты' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Насосная-1' })).toBeVisible()
 })

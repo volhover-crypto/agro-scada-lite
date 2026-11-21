@@ -19,6 +19,38 @@ interface JournalEntry {
   items: unknown[]
 }
 
+/**
+ * Сохранённые layout дашбордов: переживают перезагрузку страницы (D-30),
+ * лежат в localStorage; «Сбросить данные» панели их удаляет
+ */
+const DASHBOARDS_KEY = 'agro-scada.mock.dashboards'
+
+export function readDashboardOverrides(): Record<string, unknown[]> {
+  try {
+    return JSON.parse(localStorage.getItem(DASHBOARDS_KEY) ?? '{}') as Record<string, unknown[]>
+  } catch {
+    return {}
+  }
+}
+
+export function writeDashboardOverride(id: number, layout: unknown[]): void {
+  const all = readDashboardOverrides()
+  all[String(id)] = layout
+  try {
+    localStorage.setItem(DASHBOARDS_KEY, JSON.stringify(all))
+  } catch {
+    // localStorage недоступен — layout только на текущую страницу
+  }
+}
+
+export function clearDashboardOverrides(): void {
+  try {
+    localStorage.removeItem(DASHBOARDS_KEY)
+  } catch {
+    // ignore
+  }
+}
+
 /** Переопределения текущих значений тегов от сценариев (качество/значение) */
 export interface TagOverride {
   quality?: components['schemas']['Quality']
