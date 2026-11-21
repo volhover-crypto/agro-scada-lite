@@ -14,15 +14,15 @@ React + TypeScript (strict) + Vite; данные — TanStack Query, состо�
 
 ## Команды
 
-| Команда           | Назначение                                    |
-| ----------------- | --------------------------------------------- |
-| `npm run dev`     | dev-сервер (мок включён)                      |
-| `npm run build`   | прод-сборка в `dist/` (base `/dash/`)         |
-| `npm run preview` | предпросмотр сборки                           |
-| `npm run lint`    | ESLint + проверка форматирования Prettier     |
-| `npm run test`    | Vitest, одноразовый прогон                    |
-| `npm run e2e`     | Playwright (сначала `npx playwright install`) |
-| `npm run gen:api` | генерация типов API из контракта (с T03)      |
+| Команда           | Назначение                                                                                       |
+| ----------------- | ------------------------------------------------------------------------------------------------ |
+| `npm run dev`     | dev-сервер (мок включён)                                                                         |
+| `npm run build`   | прод-сборка в `dist/` (base `/dash/`)                                                            |
+| `npm run preview` | предпросмотр сборки                                                                              |
+| `npm run lint`    | ESLint + проверка форматирования Prettier                                                        |
+| `npm run test`    | Vitest, одноразовый прогон                                                                       |
+| `npm run e2e`     | Playwright (сначала `npx playwright install`)                                                    |
+| `npm run gen:api` | типы API из `contract/03_API_CONTRACT.yaml` → `src/api/types.gen.ts` (ручные типы API запрещены) |
 
 ## Переменные окружения
 

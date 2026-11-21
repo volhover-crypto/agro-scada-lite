@@ -4,6 +4,28 @@ export const ru = {
   appTitle: 'Agro-SCADA Lite',
   t01ScaffoldNote: 'Каркас приложения (задача T01). Экраны появятся в следующих задачах.',
 
+  // Общие тексты
+  common: {
+    loginTitle: 'Вход',
+    loginStubNote: 'Экран входа будет реализован в задаче T05',
+    unknownError: 'Не удалось выполнить действие',
+  },
+
+  // Коды ошибок API: код → текст (02_ARCHITECTURE_FE §8).
+  // NETWORK — клиентский код (нет сети), остальные — enum Error из контракта.
+  apiErrors: {
+    UNAUTHORIZED: 'Сессия истекла. Войдите снова',
+    NOT_FOUND: 'Не найдено',
+    VALIDATION: 'Проверьте правильность данных',
+    MODE_MANUAL: 'Устройство в ручном режиме — автоматика не выполняется',
+    DURATION_OVER_MAX: 'Длительность больше допустимой',
+    DURATION_REQUIRED: 'Не указана длительность',
+    NOT_APPROVED: 'Правило или расписание не утверждено',
+    ALREADY_FINAL: 'Действие невозможно: команда уже завершена',
+    RATE_LIMIT: 'Слишком много попыток, повторите через минуту',
+    NETWORK: 'Нет связи с сервером',
+  } as Record<string, string>,
+
   // Витрина токенов /dev/tokens (T02)
   devTokens: {
     title: 'Витрина токенов',
