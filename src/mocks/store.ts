@@ -58,7 +58,6 @@ export interface MockStore {
   /** Ускорение времени для длительностей: 30 мин → 30 с (04 §3) */
   speed: 1 | 60
   fail: { loseAck: boolean; rejectResult: boolean }
-  sessions: Set<string>
   loginFails: { count: number; windowStart: number }
   timers: Set<unknown>
   cmdSeq: number
@@ -77,7 +76,6 @@ export const store: MockStore = {
   simMode: false,
   speed: 60,
   fail: { loseAck: false, rejectResult: false },
-  sessions: new Set(),
   loginFails: { count: 0, windowStart: 0 },
   timers: new Set<unknown>(),
   cmdSeq: 40210,

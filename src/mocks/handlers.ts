@@ -44,10 +44,46 @@ function bearer(request: Request): string | null {
   return h?.startsWith('Bearer ') ? h.slice(7) : null
 }
 
+/*
+ * Сессии — в localStorage, не в памяти страницы: обработчики MSW живут в
+ * контексте страницы, и после полной перезагрузки стор обнуляется — токен из
+ * sessionStorage должен оставаться действительным (как серверная сессия в бэкенде)
+ */
+const MOCK_SESSIONS_KEY = 'agro-scada.mock.sessions'
+
+function listSessions(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem(MOCK_SESSIONS_KEY) ?? '[]') as string[]
+  } catch {
+    return []
+  }
+}
+
+function addSession(token: string): void {
+  const list = listSessions()
+  list.push(token)
+  try {
+    localStorage.setItem(MOCK_SESSIONS_KEY, JSON.stringify(list))
+  } catch {
+    // localStorage недоступен — сессия только на текущую страницу
+  }
+}
+
+function removeSession(token: string): void {
+  try {
+    localStorage.setItem(
+      MOCK_SESSIONS_KEY,
+      JSON.stringify(listSessions().filter((t) => t !== token)),
+    )
+  } catch {
+    // ignore
+  }
+}
+
 /** 401 без/с чужим токеном; для /auth/login не применяется */
 function guard(request: Request): Response | null {
   const t = bearer(request)
-  if (!t || !store.sessions.has(t)) return err(401, 'UNAUTHORIZED', 'Нет или истёк токен')
+  if (!t || !listSessions().includes(t)) return err(401, 'UNAUTHORIZED', 'Нет или истёк токен')
   return null
 }
 
@@ -187,7 +223,7 @@ export const handlers = [
     }
     if (body.login === DEMO_USER.login && body.password === DEMO_USER.password) {
       const token = 'mock-' + uuid()
-      store.sessions.add(token)
+      addSession(token)
       store.loginFails = { count: 0, windowStart: now }
       audit('user.login', 'user', String(DEMO_USER.id), { login: DEMO_USER.login })
       return HttpResponse.json({
@@ -203,7 +239,7 @@ export const handlers = [
 
   http.post(BASE + '/auth/logout', ({ request }) => {
     const t = bearer(request)
-    if (t) store.sessions.delete(t)
+    if (t) removeSession(t)
     return new HttpResponse(null, { status: 204 })
   }),
 

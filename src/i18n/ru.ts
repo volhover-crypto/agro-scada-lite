@@ -40,6 +40,37 @@ export const ru = {
     overviewNote: 'Обзор объектов — задача T09. Пока доступна витрина токенов: /dev/tokens',
   },
 
+  // Виджеты (T07, 07_WIDGETS_SPEC)
+  widgets: {
+    noData: 'Нет данных',
+    loadError: 'Не удалось загрузить',
+    retry: 'Повторить',
+    updatedAgo: 'обновлено {n} мин назад',
+    offline: 'нет связи',
+    sensorError: 'ошибка датчика',
+    outOfRange: 'вне диапазона',
+    receivedNote: 'время приёма',
+    forecastOn: 'прогноз на {time}',
+    sim: 'ТЕСТ',
+    lampOn: 'Вкл',
+    lampOff: 'Выкл',
+    lampUnknown: 'Неизвестно',
+    trendUp: 'Растёт',
+    trendDown: 'Падает',
+    trendFlat: 'Без изменений',
+    gaugeAria: '{title}: {value} {unit}',
+  },
+
+  // Витрина виджетов /dev/widgets (T07, dev)
+  devWidgets: {
+    title: 'Витрина виджетов',
+    subtitle:
+      'Card, Lamp, Gauge на данных мока. В сценарии quality каждый виджет показывает статусы качества по 06_DESIGN_TOKENS',
+    sectionCard: 'Card — последнее значение, тренд 24 ч',
+    sectionGauge: 'Gauge — стрелочный индикатор с зонами',
+    sectionLamp: 'Lamp — сигнальная лампа (порог)',
+  },
+
   // Экран входа (T05)
   login: {
     title: 'Вход',

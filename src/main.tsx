@@ -13,6 +13,16 @@ import '@/styles/global.css'
 // 401 из любого запроса → /login (02 §4)
 installUnauthorizedRedirect(router)
 
+function render(): void {
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    </StrictMode>,
+  )
+}
+
 // Мок (MSW): подключается только динамическими импортами внутри условия —
 // в прод-сборке (VITE_USE_MOCK=false) ветка вырезается, кода мока в бандле нет
 async function enableMock(): Promise<void> {
@@ -45,13 +55,9 @@ async function enableMock(): Promise<void> {
 }
 
 if (import.meta.env.VITE_USE_MOCK === 'true') {
-  void enableMock()
+  // Рендер — ТОЛЬКО после готовности воркера: иначе первые запросы страниц
+  // уходят до регистрации обработчиков и bypass'ом попадают в vite (404)
+  void enableMock().then(render)
+} else {
+  render()
 }
-
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>
-  </StrictMode>,
-)

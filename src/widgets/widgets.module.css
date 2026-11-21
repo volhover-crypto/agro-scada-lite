@@ -1,0 +1,251 @@
+/* Виджеты (T07): рамка, качество, Card, Lamp, Gauge. Токены — из tokens.css */
+
+.frame {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 130px;
+}
+
+.frameHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.frameTitle {
+  font-size: var(--font-size-base);
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-heading);
+}
+
+.qualityMark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  flex-wrap: wrap;
+}
+
+.qTime {
+  color: var(--text-secondary);
+}
+
+.qStale {
+  color: var(--quality-stale);
+}
+
+.qOffline {
+  color: var(--quality-offline);
+  font-weight: var(--font-weight-heading);
+}
+
+.qError {
+  color: var(--quality-error);
+  font-weight: var(--font-weight-heading);
+}
+
+.qForecast {
+  color: var(--quality-forecast);
+  border-bottom: 2px dashed var(--quality-forecast);
+}
+
+.simBadge {
+  background: var(--quality-sim);
+  color: var(--bg-surface);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-btn);
+  font-weight: var(--font-weight-heading);
+  letter-spacing: 0.06em;
+}
+
+.valueText {
+  font-variant-numeric: tabular-nums;
+}
+
+.valueBad {
+  color: var(--quality-error);
+  text-decoration: line-through;
+}
+
+.valueDim {
+  color: var(--quality-stale);
+}
+
+/* Скелетон загрузки (05 §11: не спиннер на весь экран) */
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  flex: 1;
+  justify-content: center;
+}
+
+.skeletonBlock {
+  height: 16px;
+  border-radius: var(--radius-btn);
+  background: linear-gradient(
+    90deg,
+    var(--bg-sunken) 25%,
+    var(--bg-surface) 50%,
+    var(--bg-sunken) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.2s linear infinite;
+}
+
+.skeletonBlockBig {
+  height: 40px;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* Состояния «нет данных» и «ошибка» */
+.stateBox {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  color: var(--text-secondary);
+  font-size: var(--font-size-base);
+  padding: var(--space-2) 0;
+  flex: 1;
+  justify-content: center;
+}
+
+.retryBtn {
+  font: inherit;
+  min-height: var(--touch-min);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-btn);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.retryBtn:hover {
+  background: var(--bg-sunken);
+}
+
+/* Card */
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  flex: 1;
+  justify-content: center;
+}
+
+.cardValue {
+  font-size: var(--font-size-xxl);
+  font-weight: var(--font-weight-heading);
+}
+
+.cardValueRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.trend {
+  font-size: var(--font-size-lg);
+  color: var(--brand-blue);
+}
+
+.sparkline {
+  width: 100%;
+  height: 32px;
+}
+
+/* Lamp */
+.lampRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: 1;
+}
+
+.lampDot {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-cta);
+  flex: none;
+}
+
+.lampOn {
+  background: var(--actuator-on);
+}
+
+.lampOff {
+  background: var(--actuator-off);
+}
+
+/* «Неизвестно» — жёлтый контур (07 §2) */
+.lampUnknown {
+  background: transparent;
+  border: 2px solid var(--actuator-unknown);
+}
+
+.lampLabel {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-heading);
+}
+
+/* Gauge */
+.gaugeWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  flex: 1;
+  justify-content: center;
+}
+
+.gaugeSvg {
+  width: 100%;
+  max-width: 180px;
+}
+
+/* Плавный ход стрелки 300 мс (07 §2) */
+.gaugeNeedle {
+  transition: transform 300ms var(--ease-out);
+}
+
+.gaugeValue {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-heading);
+}
+
+/* Витрина /dev/widgets */
+.devPage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.devSectionTitle {
+  font-size: var(--font-size-md);
+  color: var(--brand-olive-dark);
+  margin-bottom: var(--space-3);
+}
+
+.devGrid {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+}

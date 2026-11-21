@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { Outlet, useNavigate } from 'react-router'
+import { Navigate, Outlet, useLocation } from 'react-router'
 import { useObjects } from '@/api/endpoints/objects'
 import { ru } from '@/i18n/ru'
 import { getSessionToken } from '@/state/session'
@@ -19,25 +19,31 @@ import s from './shell.module.css'
  * Здесь же стартует глобальный поллер /updates (02 §3).
  */
 export function Shell() {
-  const navigate = useNavigate()
-  const { data: objects } = useObjects()
+  const location = useLocation()
+  const hasToken = getSessionToken() != null
+  // enabled=false без токена: ни один запрос не должен уходить, иначе
+  // серия 401 перезаписывает state.from и после входа уводит не туда
+  const { data: objects } = useObjects(hasToken)
   const selectedObjectId = useUiStore((st) => st.selectedObjectId)
   const setSelectedObject = useUiStore((st) => st.setSelectedObject)
   const offlineSince = useUiStore((st) => st.offlineSince)
   const pollStop = useRef<(() => void) | null>(null)
 
-  // Без токена — на вход; с токеном — запускаем поллер на время жизни каркаса
+  // Поллер живёт, пока смонтирован каркас
   useEffect(() => {
-    if (!getSessionToken()) {
-      navigate('/login', { replace: true })
-      return
-    }
+    if (!hasToken) return
     pollStop.current = startUpdatesPolling()
     return () => {
       pollStop.current?.()
       pollStop.current = null
     }
-  }, [navigate])
+  }, [hasToken])
+
+  // Гейт ПОСЛЕ хуков: без токена рендерим только редирект (детей нет —
+  // их запросы тоже молчат)
+  if (!hasToken) {
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />
+  }
 
   // Первый объект — по умолчанию (выбор в шапке хранится в ui-сторе)
   useEffect(() => {

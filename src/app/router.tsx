@@ -52,6 +52,11 @@ export const router = createBrowserRouter(
       path: '/dev/tokens',
       lazy: () => import('@/pages/dev/TokensPage').then((m) => ({ Component: m.TokensPage })),
     },
+    // Витрина виджетов (T07) — тоже dev-маршрут вне навигации
+    {
+      path: '/dev/widgets',
+      lazy: () => import('@/pages/dev/WidgetsPage').then((m) => ({ Component: m.WidgetsPage })),
+    },
   ],
   {
     basename: import.meta.env.BASE_URL,
