@@ -3,7 +3,9 @@ import { defineConfig, devices } from '@playwright/test'
 export default defineConfig({
   testDir: './e2e',
   timeout: 30_000,
-  fullyParallel: true,
+  // Мок — изменяемое состояние (счётчик rate-limit и т.п.): тесты внутри
+  // файла идут строго по порядку
+  fullyParallel: false,
   reporter: [['list']],
   use: {
     // Явный IPv4: дефолтный биндинг vite на 'localhost' даёт адресацию,

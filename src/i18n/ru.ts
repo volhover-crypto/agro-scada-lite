@@ -6,9 +6,17 @@ export const ru = {
 
   // Общие тексты
   common: {
-    loginTitle: 'Вход',
-    loginStubNote: 'Экран входа будет реализован в задаче T05',
     unknownError: 'Не удалось выполнить действие',
+  },
+
+  // Экран входа (T05)
+  login: {
+    title: 'Вход',
+    loginLabel: 'Логин',
+    passwordLabel: 'Пароль',
+    submit: 'Войти',
+    submitting: 'Входим…',
+    wrongCredentials: 'Неверный логин или пароль',
   },
 
   // Коды ошибок API: код → текст (02_ARCHITECTURE_FE §8).
