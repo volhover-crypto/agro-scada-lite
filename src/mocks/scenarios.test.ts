@@ -72,6 +72,9 @@ describe('переключение всех 8 сценариев', () => {
       `/updates?since=2020-01-01T00:00:00+03:00`,
     )
     expect(upd.client_flags.sim_mode).toBe(true)
+    // BR-FE-6: в /settings/client флага нет
+    const client = await get<Record<string, unknown>>('/settings/client')
+    expect('sim_mode' in client).toBe(false)
   })
 
   it('pressure_drop: P1 через 20 с, эскалация 1 и 2', async () => {

@@ -52,6 +52,9 @@ export interface MockStore {
   lastMs: number
   serverTs: string
   journal: JournalEntry[]
+  /** Флаг симулятора: только чтение, из /updates client_flags (BR-FE-6, 21.11.2026);
+   *  в /settings/client не отдаётся и не принимается */
+  simMode: boolean
   /** Ускорение времени для длительностей: 30 мин → 30 с (04 §3) */
   speed: 1 | 60
   fail: { loseAck: boolean; rejectResult: boolean }
@@ -71,6 +74,7 @@ export const store: MockStore = {
   lastMs: 0,
   serverTs: '',
   journal: [],
+  simMode: false,
   speed: 60,
   fail: { loseAck: false, rejectResult: false },
   sessions: new Set(),
@@ -139,6 +143,7 @@ export function resetStore(scenario: string = 'normal'): void {
   store.channelValues = new Map()
   store.tagOverrides = new Map()
   store.journal = []
+  store.simMode = false
   store.speed = 60
   store.fail = { loseAck: false, rejectResult: false }
   store.loginFails = { count: 0, windowStart: 0 }

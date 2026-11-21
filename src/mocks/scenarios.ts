@@ -60,7 +60,7 @@ export function applyScenario(name: ScenarioName): void {
     const err = tagOf(5, 0x03, -30)
     if (err) store.tagOverrides.set(err.tagId, { quality: 'sensor_error', value: null })
     for (const t of tagsOfModem(devEui(6))) store.tagOverrides.set(t.tagId, { quality: 'sim' })
-    store.seed.client.sim_mode = true
+    store.simMode = true
     const bl = tagOf(7, 0x02)
     if (bl) store.tagOverrides.set(bl.tagId, { origin: 'backlog' })
   }

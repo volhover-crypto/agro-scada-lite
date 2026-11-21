@@ -67,7 +67,6 @@ export interface Seed {
     internet_allowed: boolean
     allowed_channels: string[]
     external_sources_allowed: boolean
-    sim_mode: boolean
   }
 }
 
@@ -591,7 +590,6 @@ export function buildSeed(): Seed {
       internet_allowed: true,
       allowed_channels: ['push', 'telegram'],
       external_sources_allowed: true,
-      sim_mode: false,
     },
   }
 }

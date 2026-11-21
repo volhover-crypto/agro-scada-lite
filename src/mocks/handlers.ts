@@ -601,7 +601,7 @@ export const handlers = [
     const buckets = journalSince(since)
     return HttpResponse.json({
       ...buckets,
-      client_flags: { sim_mode: store.seed.client.sim_mode },
+      client_flags: { sim_mode: store.simMode },
     })
   }),
 
@@ -679,6 +679,8 @@ export const handlers = [
     if (g) return g
     if (params.section === 'client') {
       const body = await jsonBody<Record<string, unknown>>(request)
+      // BR-FE-6: флаг симулятора из настроек не принимается — только бэкенд
+      delete body.sim_mode
       Object.assign(store.seed.client, body)
       audit('settings.updated', 'settings', 'client', body)
     }
