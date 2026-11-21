@@ -38,12 +38,15 @@ function contrast(fg: string, bg: string): number {
 // cwd при `npm run test` — корень проекта
 const tokens = parseTokens(readFileSync(resolve(process.cwd(), 'src/styles/tokens.css'), 'utf-8'))
 
-// 06 §7: контраст ТЕКСТА ≥ 4.5:1 на --bg-surface (и на фоне страницы — тот же текст)
+// 06 §7: контраст ТЕКСТА ≥ 4.5:1 на --bg-surface (и на фоне страницы — тот же текст).
+// P2 включён после затемнения по решению владельца (QUESTIONS В9): #9C5300
 const TEXT_PAIRS: Array<[fg: string, bg: string]> = [
   ['text-primary', 'bg-surface'],
   ['text-secondary', 'bg-surface'],
   ['text-primary', 'bg-page'],
   ['text-secondary', 'bg-page'],
+  ['alarm-p2', 'alarm-p2-bg'],
+  ['alarm-p2', 'bg-surface'],
 ]
 
 describe('контраст токенов (06_DESIGN_TOKENS §7)', () => {
