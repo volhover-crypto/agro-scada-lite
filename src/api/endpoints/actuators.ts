@@ -4,11 +4,13 @@ import { api } from '../client'
 
 type ActuatorT = components['schemas']['Actuator']
 
-/** Исполнители (по всем объектам или одному) */
-export function useActuators(objectId?: number) {
+/** Исполнители (по всем объектам или одному); refetchMs — для страниц, где факт
+ * должен догонять ack команд (updates мержит в плоский ключ — доезжает не всё) */
+export function useActuators(objectId?: number, refetchMs?: number) {
   return useQuery({
     queryKey: ['actuators', objectId ?? 'all'],
     queryFn: () => api.get<ActuatorT[]>(`/actuators${objectId ? `?object_id=${objectId}` : ''}`),
+    refetchInterval: refetchMs,
   })
 }
 

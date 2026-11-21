@@ -127,6 +127,17 @@ describe('проверки создания команд', () => {
     const res = await req('POST', '/commands', { command_def_id: 2, idempotency_key: 'cmd-off-1' })
     expect(((await res.json()) as { status: string }).status).toBe('queued')
   })
+
+  it('open (форточка, def 11) — без длительности: канон §3.1 п.3, длительность только для on', async () => {
+    const res = await req('POST', '/commands', {
+      command_def_id: 11,
+      idempotency_key: 'cmd-open-1',
+    })
+    expect(res.status).toBe(201)
+    const body = (await res.json()) as { status: string; duration_s: number | null }
+    expect(body.status).toBe('awaiting_confirm')
+    expect(body.duration_s).toBe(null)
+  })
 })
 
 describe('сбои команд', () => {

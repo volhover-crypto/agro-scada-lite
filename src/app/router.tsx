@@ -43,7 +43,10 @@ export const router = createBrowserRouter(
           path: 'o/:objectId/p/:postId',
           lazy: () => import('@/pages/PostPage').then((m) => ({ Component: m.PostPage })),
         },
-        { path: 'a/:actuatorId', element: <StubPage title="Устройство" task="T12" /> },
+        {
+          path: 'a/:actuatorId',
+          lazy: () => import('@/pages/DevicePage').then((m) => ({ Component: m.DevicePage })),
+        },
         { path: 'alarms', element: <StubPage title={ru.shell.navAlarms} task="T13" /> },
         {
           path: 'charts',

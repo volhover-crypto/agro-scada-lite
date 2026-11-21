@@ -84,7 +84,9 @@ export function createCommand(
   }
 
   let duration: number | null = null
-  if (def.action === 'on' || def.action === 'open') {
+  // канон §3.1 п.3: длительность обязательна только для action='on'
+  // (open/close идут без длительности, в порту duration_s=0)
+  if (def.action === 'on') {
     if (durationS === undefined) {
       if (act.default_duration_s == null) {
         throw new MockBusinessError('DURATION_REQUIRED', 'Не указана длительность')

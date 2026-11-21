@@ -355,6 +355,24 @@ export function buildSeed(): Seed {
       max_duration_s: null,
       commands: [],
     },
+    {
+      // T12: исполнитель на посте 4 — в сценарии link_loss (модемы 3–6 offline)
+      // он даёт ветку MODEM_OFFLINE у команд
+      id: 7,
+      dev_eui: devEui(4),
+      output_no: 1,
+      type: 'valve',
+      name: 'Клапан 4',
+      post_id: 4,
+      mode: 'auto',
+      mode_changed_at: iso(now - 86_400_000),
+      set_state: 'off',
+      fact_state: 'off',
+      fact_until: null,
+      default_duration_s: 1800,
+      max_duration_s: 14_400,
+      commands: [],
+    },
   ]
   const commandDefs: CommandDefT[] = [
     { id: 1, actuator_id: 1, action: 'on', confirm_policy: 'always' },
@@ -369,6 +387,8 @@ export function buildSeed(): Seed {
     { id: 10, actuator_id: 5, action: 'off', confirm_policy: 'none' },
     { id: 11, actuator_id: 6, action: 'open', confirm_policy: 'manual_and_rule_approval' },
     { id: 12, actuator_id: 6, action: 'close', confirm_policy: 'none' },
+    { id: 13, actuator_id: 7, action: 'on', confirm_policy: 'manual_and_rule_approval' },
+    { id: 14, actuator_id: 7, action: 'off', confirm_policy: 'none' },
   ]
   for (const def of commandDefs) {
     actuators[def.actuator_id - 1]!.commands!.push(def)
