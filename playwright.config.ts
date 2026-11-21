@@ -3,9 +3,10 @@ import { defineConfig, devices } from '@playwright/test'
 export default defineConfig({
   testDir: './e2e',
   timeout: 30_000,
-  // Мок — изменяемое состояние (счётчик rate-limit и т.п.): тесты внутри
-  // файла идут строго по порядку
+  // Мок — изменяемое состояние (счётчик rate-limit и т.п.): и тесты внутри
+  // файла, и файлы идут строго по порядку (один воркер)
   fullyParallel: false,
+  workers: 1,
   reporter: [['list']],
   use: {
     // Явный IPv4: дефолтный биндинг vite на 'localhost' даёт адресацию,

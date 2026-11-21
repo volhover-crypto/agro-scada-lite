@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test'
 
-// Базовая проверка T01: приложение открывается и отдаёт заголовок
+// Базовая проверка: приложение открывается; без токена каркас отдаёт вход (T06)
 test('приложение открывается', async ({ page }) => {
   await page.goto('/')
-  await expect(page.getByRole('heading', { level: 1, name: 'Agro-SCADA Lite' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Вход' })).toBeVisible()
 })
 
 // Витрина токенов (T02)
@@ -15,7 +15,7 @@ test('витрина токенов открывается', async ({ page }) =>
 
 // Мок-воркер живой: перехватывает fetch страницы (только dev, VITE_USE_MOCK=true)
 test('мок отвечает в браузере', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('/?scenario=normal')
   await page.waitForFunction(
     () => (window as unknown as Record<string, unknown>).__mockReady === true,
   )

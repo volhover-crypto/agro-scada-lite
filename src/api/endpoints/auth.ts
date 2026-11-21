@@ -12,7 +12,7 @@ export async function login(loginName: string, password: string): Promise<LoginR
     // по контракту 200 всегда содержит токен; защита от повреждённого ответа
     throw new ApiError(500, 'UNKNOWN', 'Сервер не вернул токен')
   }
-  setSessionToken(res.token)
+  setSessionToken(res.token, res.user?.login ?? loginName)
   return res
 }
 

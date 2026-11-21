@@ -9,6 +9,37 @@ export const ru = {
     unknownError: 'Не удалось выполнить действие',
   },
 
+  // Каркас приложения (T06)
+  shell: {
+    // навигация (05 §0)
+    navOverview: 'Обзор',
+    navObjects: 'Объекты',
+    navAlarms: 'Тревоги',
+    navCharts: 'Графики',
+    navRules: 'Правила',
+    navSchedules: 'Расписания',
+    navAudit: 'Журнал',
+    navSettings: 'Настройки',
+    navControl: 'Управление',
+    navMore: 'Ещё',
+    // шапка
+    objectSelectPlaceholder: 'Объект…',
+    linkStatusOk: 'Связь: все модемы онлайн',
+    linkStatusPartial: 'Связь: {online} из {total} модемов',
+    linkStatusNone: 'Нет связи с объектом',
+    bsStatusHint: 'Статус БС появится после обновления контракта (BR-FE-1)',
+    alarmsCount: 'Активные тревоги: {n}',
+    simBadge: 'ТЕСТ',
+    simBadgeHint: 'Режим симулятора: данные тестовые',
+    logout: 'Выйти',
+    // баннеры
+    alarmConfirm: 'Подтвердить',
+    alarmOpen: 'Открыть',
+    offlineBanner: 'Нет связи с сервером, данные на {time}',
+    stubNote: 'Раздел будет реализован в задаче {task}',
+    overviewNote: 'Обзор объектов — задача T09. Пока доступна витрина токенов: /dev/tokens',
+  },
+
   // Экран входа (T05)
   login: {
     title: 'Вход',

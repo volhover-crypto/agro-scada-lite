@@ -43,6 +43,13 @@ function setPostWorst(postId: number, status: 'ok' | 'warn' | 'alarm' | 'offline
 
 export function applyScenario(name: ScenarioName): void {
   resetStore(name)
+  // В браузере запоминаем выбор: первая регистрация service-worker мока
+  // перезагружает страницу, теряя ?scenario= (см. main.tsx)
+  try {
+    sessionStorage.setItem('agro-scada.mock.scenario', name)
+  } catch {
+    // тестовое окружение node — sessionStorage нет
+  }
 
   if (name === 'quality') {
     // stale / offline / out_of_range / sensor_error / sim / backlog на разных постах
