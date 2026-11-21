@@ -122,7 +122,9 @@ function useQueryChannels() {
 }
 
 /** Каталог тегов для конструктора: пост и имя из /tags/current, параметр из канала */
-function buildCatalog(
+/** Каталог тегов для конструктора: пост и имя из /tags/current, параметр из канала
+ *  (используется также мастером правил T14) */
+export function buildCatalog(
   channels: ChannelT[],
   current: TagValueT[],
 ): Array<{ tagId: string; label: string }> {

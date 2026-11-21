@@ -55,8 +55,14 @@ export const router = createBrowserRouter(
           path: 'charts',
           lazy: () => import('@/pages/ChartsPage').then((m) => ({ Component: m.ChartsPage })),
         },
-        { path: 'rules', element: <StubPage title={ru.shell.navRules} task="T14" /> },
-        { path: 'schedules', element: <StubPage title={ru.shell.navSchedules} task="T14" /> },
+        {
+          path: 'rules',
+          lazy: () => import('@/pages/RulesPage').then((m) => ({ Component: m.RulesPage })),
+        },
+        {
+          path: 'schedules',
+          lazy: () => import('@/pages/SchedulesPage').then((m) => ({ Component: m.SchedulesPage })),
+        },
         { path: 'audit', element: <StubPage title={ru.shell.navAudit} task="T15" /> },
         { path: 'settings/*', element: <StubPage title={ru.shell.navSettings} task="T16" /> },
         { path: 'more', element: <MorePage /> },
