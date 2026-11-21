@@ -1,6 +1,8 @@
+import { BarWidget } from '@/widgets/Bar'
 import { CardWidget } from '@/widgets/Card'
 import { GaugeWidget } from '@/widgets/Gauge'
 import { LampWidget } from '@/widgets/Lamp'
+import { TableWidget } from '@/widgets/Table'
 import { ru } from '@/i18n/ru'
 import s from '@/widgets/widgets.module.css'
 
@@ -92,6 +94,28 @@ export function WidgetsPage() {
             )
           })}
         </div>
+      </section>
+
+      <section>
+        <h2 className={s.devSectionTitle}>Bar — осадки по дням</h2>
+        <BarWidget
+          title="Осадки, пост 1 (сумма за сутки)"
+          tags={['70B3D58FF0031A01/9/150/1']}
+          period="7d"
+        />
+      </section>
+
+      <section>
+        <h2 className={s.devSectionTitle}>Table — телеметрия</h2>
+        <TableWidget
+          title="Пост 1 · все параметры"
+          tags={[
+            '70B3D58FF0031A01/1/150/1',
+            '70B3D58FF0031A01/2/150/1',
+            '70B3D58FF0031A01/3/-10/1',
+            '70B3D58FF0031A01/9/150/1',
+          ]}
+        />
       </section>
     </div>
   )

@@ -249,3 +249,216 @@
   gap: var(--space-3);
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
 }
+
+/* Table (T08) */
+.tableWrap {
+  overflow-x: auto;
+}
+
+.tableControls {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: var(--space-2);
+}
+
+.tableSelect,
+.tableSearch {
+  font: inherit;
+  min-height: var(--touch-min);
+  padding: var(--space-1) var(--space-2);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-btn);
+  color: var(--text-primary);
+}
+
+.tableCsv {
+  min-height: var(--touch-min);
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-btn);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-base);
+}
+
+.table th {
+  text-align: left;
+  border-bottom: 2px solid var(--border);
+  padding: var(--space-1) var(--space-2);
+}
+
+.table td {
+  border-bottom: 1px solid var(--border);
+  padding: var(--space-2);
+}
+
+.tableSort {
+  font: inherit;
+  font-weight: var(--font-weight-heading);
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: var(--space-1) 0;
+  min-height: var(--touch-min);
+}
+
+.tableEmpty {
+  color: var(--text-secondary);
+  text-align: center;
+  padding: var(--space-4);
+}
+
+/* Страница /charts (T08) */
+.chartsPage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.chartsRow {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+@media (max-width: 1023px) {
+  .chartsRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pickerCard {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.pickerSearch {
+  font: inherit;
+  min-height: var(--touch-min);
+  padding: var(--space-1) var(--space-2);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-btn);
+}
+
+.treeItem {
+  border: none;
+  background: none;
+  font: inherit;
+  text-align: left;
+  color: var(--text-primary);
+  padding: var(--space-1) var(--space-2);
+  min-height: 40px;
+  cursor: pointer;
+  width: 100%;
+  border-radius: var(--radius-btn);
+}
+
+.treeItem:hover {
+  background: var(--bg-sunken);
+}
+
+.treeGroup {
+  font-weight: var(--font-weight-heading);
+}
+
+.treeChild {
+  margin-left: var(--space-4);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-cta);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--font-size-xs);
+}
+
+.chipBtn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--alarm-p1);
+  font-size: var(--font-size-md);
+  padding: 0 var(--space-1);
+  min-height: 32px;
+  min-width: 32px;
+}
+
+.chipsLimit {
+  color: var(--alarm-p2);
+  font-size: var(--font-size-xs);
+}
+
+.chartsControls {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.controlLabel {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+.controlSelect {
+  font: inherit;
+  min-height: var(--touch-min);
+  padding: var(--space-1) var(--space-2);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-btn);
+}
+
+.saveBtn {
+  font: inherit;
+  font-weight: var(--font-weight-heading);
+  min-height: var(--touch-min);
+  padding: 0 var(--space-4);
+  border: none;
+  border-radius: var(--radius-btn);
+  background: var(--brand-olive-dark);
+  color: var(--bg-surface);
+  cursor: pointer;
+}
+
+.saveBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.savedNote {
+  color: var(--actuator-on);
+  font-size: var(--font-size-base);
+}

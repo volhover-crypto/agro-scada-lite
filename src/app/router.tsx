@@ -39,7 +39,10 @@ export const router = createBrowserRouter(
         { path: 'o/:objectId/p/:postId', element: <StubPage title="Пост" task="T11" /> },
         { path: 'a/:actuatorId', element: <StubPage title="Устройство" task="T12" /> },
         { path: 'alarms', element: <StubPage title={ru.shell.navAlarms} task="T13" /> },
-        { path: 'charts', element: <StubPage title={ru.shell.navCharts} task="T08" /> },
+        {
+          path: 'charts',
+          lazy: () => import('@/pages/ChartsPage').then((m) => ({ Component: m.ChartsPage })),
+        },
         { path: 'rules', element: <StubPage title={ru.shell.navRules} task="T14" /> },
         { path: 'schedules', element: <StubPage title={ru.shell.navSchedules} task="T14" /> },
         { path: 'audit', element: <StubPage title={ru.shell.navAudit} task="T15" /> },

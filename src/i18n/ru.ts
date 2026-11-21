@@ -61,6 +61,12 @@ export const ru = {
     gaugeAria: '{title}: {value} {unit}',
   },
 
+  // Страница графиков (T08, 05 §7)
+  charts: {
+    maxSeries: 'Не более {max} рядов',
+    emptyHint: 'Выберите параметры в дереве слева',
+  },
+
   // Витрина виджетов /dev/widgets (T07, dev)
   devWidgets: {
     title: 'Витрина виджетов',
