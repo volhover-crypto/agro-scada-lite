@@ -15,3 +15,20 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
   ;(globalThis as unknown as { ResizeObserver: typeof ResizeObserverStub }).ResizeObserver =
     ResizeObserverStub
 }
+
+// jsdom без matchMedia (нужен выбор таблица/карточки на AlarmsPage)
+if (typeof globalThis.matchMedia === 'undefined') {
+  Object.defineProperty(globalThis, 'matchMedia', {
+    writable: true,
+    value: (query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }),
+  })
+}

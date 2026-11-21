@@ -69,12 +69,13 @@ test('normal, Клапан 1: ВЫКЛЮЧИТЬ — без диалога, фа
   await select10min(page)
   await page.getByTestId('primary-action').click()
   await holdConfirm(page)
-  await expect(page.getByText('● Включено')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('● Включено')).toBeVisible({ timeout: 30_000 })
 
   await page.getByTestId('secondary-action').click()
   // диалог подтверждения не появляется
   await expect(page.getByTestId('hold-button')).toBeHidden()
-  await expect(page.getByText('● Выключено')).toBeVisible({ timeout: 15_000 })
+  // запас на параллельный прогон: цепочка off ~5-8 с + опрос факта
+  await expect(page.getByText('● Выключено')).toBeVisible({ timeout: 30_000 })
 })
 
 test('cmd_fail: потеря ack → «Не подтверждено модемом» + Повторить', async ({ page }) => {

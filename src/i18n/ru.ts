@@ -150,6 +150,38 @@ export const ru = {
     loading: 'Загрузка…',
   },
 
+  // Страница тревог (T13, 05 §6)
+  alarms: {
+    title: 'Тревоги',
+    filterActive: 'Активные',
+    filterUnacked: 'Неподтверждённые',
+    filterAll: 'Все',
+    filterObject: 'Объект',
+    filterPriority: 'Приоритет',
+    priorityAll: 'Все приоритеты',
+    colPriority: 'Приоритет',
+    colPlace: 'Объект / пост',
+    colMessage: 'Сообщение',
+    colTime: 'Время',
+    colState: 'Состояние',
+    colEscalation: 'Эскалация',
+    stateActiveUnacked: 'Активна',
+    stateActiveAcked: 'Подтверждена',
+    stateClearedUnacked: 'Снята',
+    stateClosed: 'Закрыта',
+    p1: 'P1 Авария',
+    p2: 'P2 Важно',
+    p3: 'P3 Предупреждение',
+    p4: 'P4 Информация',
+    escalationStep: 'Шаг {n}',
+    ack: 'Подтвердить',
+    ackedBy: 'Подтвердил {who} {time}',
+    toDevice: 'К устройству',
+    toObject: 'К объекту',
+    empty: 'Тревог по фильтру нет',
+    postsSuffix: 'Пост',
+  },
+
   // Soil3D — разрез почвы (T11, 07 §3.2)
   soil3d: {
     title: 'Разрез почвы',

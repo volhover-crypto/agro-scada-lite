@@ -47,7 +47,10 @@ export const router = createBrowserRouter(
           path: 'a/:actuatorId',
           lazy: () => import('@/pages/DevicePage').then((m) => ({ Component: m.DevicePage })),
         },
-        { path: 'alarms', element: <StubPage title={ru.shell.navAlarms} task="T13" /> },
+        {
+          path: 'alarms',
+          lazy: () => import('@/pages/AlarmsPage').then((m) => ({ Component: m.AlarmsPage })),
+        },
         {
           path: 'charts',
           lazy: () => import('@/pages/ChartsPage').then((m) => ({ Component: m.ChartsPage })),
