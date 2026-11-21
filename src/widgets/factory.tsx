@@ -38,7 +38,11 @@ const RENDERERS: Record<WidgetKind, (config: WidgetConfig) => ReactNode> = {
     />
   ),
   lamp: (config) => (
-    <LampWidget title={config.title} tags={config.tags} options={(config.options ?? {}) as LampOptions} />
+    <LampWidget
+      title={config.title}
+      tags={config.tags}
+      options={(config.options ?? {}) as LampOptions}
+    />
   ),
   chart: (config) => {
     const opts = config.options ?? {}
@@ -68,9 +72,5 @@ const RENDERERS: Record<WidgetKind, (config: WidgetConfig) => ReactNode> = {
 /** Конфиг → виджет */
 export function WidgetById({ config }: { config: WidgetConfig }) {
   const render = RENDERERS[config.kind]
-  return render ? (
-    render(config)
-  ) : (
-    <div>Виджет «{config.kind}» не поддерживается в сетке</div>
-  )
+  return render ? render(config) : <div>Виджет «{config.kind}» не поддерживается в сетке</div>
 }

@@ -1,0 +1,146 @@
+/* 3D-сцена (T10) */
+.wrap {
+  position: relative;
+  height: 560px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  display: flex;
+}
+
+.wrap canvas {
+  flex: 1;
+}
+
+.resetBtn {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  z-index: 10;
+  font: inherit;
+  min-height: var(--touch-min);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-btn);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.sidePanel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 300px;
+  background: var(--bg-surface);
+  border-left: 1px solid var(--border);
+  padding: var(--space-3);
+  overflow-y: auto;
+  z-index: 10;
+  font-size: var(--font-size-base);
+}
+
+.postLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-btn);
+  background: var(--bg-surface);
+  padding: var(--space-1) var(--space-2);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+}
+
+.postLabelSelected {
+  border-color: var(--brand-olive);
+  box-shadow: var(--shadow-card);
+}
+
+.postLabelValue {
+  display: inline-flex;
+  gap: var(--space-1);
+  align-items: baseline;
+}
+
+.postLabelName {
+  color: var(--text-secondary);
+}
+
+.postLabelTime {
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
+.alarmDot {
+  color: var(--alarm-p1);
+  margin-left: var(--space-1);
+}
+
+.bsLabel {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-btn);
+  padding: 0 var(--space-1);
+}
+
+.panelTitle {
+  font-size: var(--font-size-md);
+}
+
+.panelPlot {
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-body);
+  font-size: var(--font-size-xs);
+}
+
+.panelSection {
+  font-size: var(--font-size-xs);
+  color: var(--brand-olive-dark);
+  margin-top: var(--space-3);
+}
+
+.panelValues {
+  list-style: none;
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.panelValueName {
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.panelEmpty {
+  color: var(--text-secondary);
+}
+
+.panelOn {
+  color: var(--actuator-on);
+}
+
+.panelOff {
+  color: var(--actuator-off);
+}
+
+.panelLink {
+  display: inline-flex;
+  align-items: center;
+  margin-top: var(--space-3);
+  min-height: var(--touch-min);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-btn);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  text-decoration: none;
+}

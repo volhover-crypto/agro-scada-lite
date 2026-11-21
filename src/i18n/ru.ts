@@ -61,6 +61,21 @@ export const ru = {
     gaugeAria: '{title}: {value} {unit}',
   },
 
+  // 3D-сцена (T10, 07 §3.1)
+  scene3d: {
+    reset: 'Сбросить вид',
+    measured: 'изм.',
+    panelParams: 'Параметры',
+    panelActuators: 'Исполнители',
+    noWebgl: '3D недоступно на этом устройстве',
+    postLink: 'Открыть пост',
+    devicesLink: 'К устройству',
+    panelOn: 'Включено',
+    panelOff: 'Выключено',
+    panelFault: 'Авария',
+    panelTitle: 'Пост',
+  },
+
   // Обзор (T09, 05 §2)
   overview: {
     postsOnline: '{online} из {total} постов онлайн',

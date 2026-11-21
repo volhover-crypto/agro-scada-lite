@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, useEffect, useMemo, useState, Suspense } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useParams } from 'react-router'
 import type { components } from '@/api/types.gen'
 import { api } from '@/api/client'
+import { useActuators } from '@/api/endpoints/actuators'
+import { useAlarms } from '@/api/endpoints/alarms'
 import { useCreateDashboard, useDashboards, useUpdateDashboard } from '@/api/endpoints/dashboard'
 import { useModems } from '@/api/endpoints/modems'
 import { useObjects } from '@/api/endpoints/objects'
@@ -11,12 +13,18 @@ import { ru } from '@/i18n/ru'
 import { DashboardView } from './ObjectDashboard'
 import { ObjectMap } from './ObjectMap'
 import { objectTypeLabel } from './overview-helpers'
+import { ScenePostPanel } from './ScenePostPanel'
 import type { WidgetConfig } from '@/widgets/types'
 import s from './object.module.css'
 
+// Scene3D лениво: three.js в отдельный чанк (02 §7)
+const Scene3DLazy = lazy(() =>
+  import('./ObjectScene3D').then((m) => ({ default: m.ObjectScene3D })),
+)
+
 /*
  * Страница объекта (05 §3): переключатель вида [3D-сцена][Дашборд][Карта]
- * (по умолчанию 3D при WebGL, иначе дашборд; 3D реализуется в T10),
+ * (по умолчанию 3D при WebGL, иначе дашборд; fallback без WebGL),
  * полоса статуса связи, дашборд с конструктором, карта.
  */
 
@@ -140,6 +148,8 @@ export function ObjectPage() {
 
   const { data: posts } = useQueryPosts(validId ? id : -1)
   const { data: modems } = useModems()
+  const { data: alarms } = useAlarms()
+  const { data: actuators } = useActuators()
   const { data: dashboards } = useDashboards(validId ? id : null)
   const { data: channels } = useQueryChannels()
   const { data: current } = useTagValues(
@@ -148,9 +158,11 @@ export function ObjectPage() {
   )
 
   const [view, setView] = useState<ViewMode | null>(null)
+  const webgl = useMemo(() => hasWebGL(), [])
+  const [selectedPostId, setSelectedPostId] = useState<number | null>(null)
   useEffect(() => {
-    if (view === null) setView(hasWebGL() ? '3d' : 'dashboard')
-  }, [view])
+    if (view === null) setView(webgl ? '3d' : 'dashboard')
+  }, [view, webgl])
 
   const dashboard = dashboards?.find((d) => d.object_id === id)
   const create = useCreateDashboard()
@@ -188,7 +200,7 @@ export function ObjectPage() {
   return (
     <main className={s.page}>
       <ObjectHeader
-        name={object.name ?? ""}
+        name={object.name ?? ''}
         type={object.object_type}
         current={currentView}
         onSelect={setView}
@@ -196,13 +208,38 @@ export function ObjectPage() {
 
       <LinkBadge ok={link.ok} text={link.text} />
 
-      {currentView === '3d' && (
+      {currentView === '3d' && !webgl && (
         <div className={s.tbd}>
-          <p>{ru.objectPage.tbd3d}</p>
+          <p>{ru.scene3d.noWebgl}</p>
           <button type="button" className={s.viewBtn} onClick={() => setView('dashboard')}>
             {ru.objectPage.viewDashboard}
           </button>
         </div>
+      )}
+
+      {currentView === '3d' && webgl && (
+        <Suspense fallback={<p>{ru.widgets.noData}</p>}>
+          <Scene3DLazy
+            posts={(posts ?? []) as PostT[]}
+            objectType={object.object_type}
+            current={(current ?? []) as TagValueT[]}
+            actuators={actuators ?? []}
+            alarms={alarms ?? []}
+            selectedPostId={selectedPostId}
+            onSelectPost={setSelectedPostId}
+          >
+            {(postId) => (
+              <ScenePostPanel
+                objectId={id}
+                postId={postId}
+                name={(posts ?? []).find((p) => p.id === postId)?.name ?? ''}
+                plot={(posts ?? []).find((p) => p.id === postId)?.plot_name ?? ''}
+                current={(current ?? []) as TagValueT[]}
+                actuators={actuators ?? []}
+              />
+            )}
+          </Scene3DLazy>
+        </Suspense>
       )}
 
       {currentView === 'map' && <ObjectMap posts={(posts ?? []) as PostT[]} objectId={id} />}
