@@ -39,18 +39,20 @@ export function Shell() {
     }
   }, [hasToken])
 
-  // Гейт ПОСЛЕ хуков: без токена рендерим только редирект (детей нет —
-  // их запросы тоже молчат)
-  if (!hasToken) {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />
-  }
-
-  // Первый объект — по умолчанию (выбор в шапке хранится в ui-сторе)
+  // Первый объект — по умолчанию (выбор в шапке хранится в ui-сторе).
+  // До раннего return: react-hooks требует безусловный порядок хуков
+  // (без токена objects пуст — эффект no-op, поведение не меняется)
   useEffect(() => {
     if (selectedObjectId == null && objects?.length) {
       setSelectedObject(objects[0]!.id ?? null)
     }
   }, [objects, selectedObjectId, setSelectedObject])
+
+  // Гейт ПОСЛЕ хуков: без токена рендерим только редирект (детей нет —
+  // их запросы тоже молчат)
+  if (!hasToken) {
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />
+  }
 
   return (
     <div className={s.app}>

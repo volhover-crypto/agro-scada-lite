@@ -76,6 +76,43 @@ export const ru = {
     panelTitle: 'Пост',
   },
 
+  // Страница поста (T11, 05 §4)
+  postPage: {
+    notFound: 'Пост не найден',
+    modem: 'Модем',
+    battery: 'Батарея',
+    snr: 'Запас SNR',
+    rssi: 'RSSI по БС',
+    lastSeen: 'Последняя связь',
+    values: 'Текущие значения',
+    chart24h: 'График 24 ч',
+    executors: 'Исполнители',
+    alarms: 'Тревоги поста',
+    noAlarms: 'Активных тревог нет',
+    modeAuto: 'Авто',
+    modeManual: 'Ручной',
+    openDevice: 'Открыть устройство',
+    back: 'К объекту',
+    noModem: 'Модем не привязан',
+    noExecutors: 'Исполнителей на посту нет',
+  },
+
+  // Soil3D — разрез почвы (T11, 07 §3.2)
+  soil3d: {
+    title: 'Разрез почвы',
+    modeLabel: 'Режим заливки',
+    modeMoisture: 'Влажность',
+    modeTemp: 'Температура',
+    periodLabel: 'Период истории',
+    period24h: '24 ч',
+    period7d: '7 д',
+    play: 'Воспроизвести',
+    pause: 'Пауза',
+    time: 'Время',
+    hint: 'Для профиля нужно ≥ 2 датчиков на разных глубинах',
+    tempUnavailable: 'Для температурного профиля нужно ≥ 2 датчиков температуры на разных глубинах',
+  },
+
   // Обзор (T09, 05 §2)
   overview: {
     postsOnline: '{online} из {total} постов онлайн',

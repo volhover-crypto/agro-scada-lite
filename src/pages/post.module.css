@@ -1,0 +1,345 @@
+/* Страница поста (T11, 05 §4) и Soil3D (07 §3.2) */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 16px 24px 32px;
+  max-width: 1100px;
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.plot {
+  margin: 2px 0 0;
+  color: var(--text-secondary);
+}
+
+.back {
+  white-space: nowrap;
+  color: var(--brand-blue);
+  text-decoration: none;
+  padding: 8px 0;
+}
+
+.back:hover {
+  text-decoration: underline;
+}
+
+.blockTitle {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--brand-olive-dark);
+}
+
+.empty {
+  color: var(--text-secondary);
+}
+
+.errorCard {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.retry {
+  background: var(--brand-olive-dark);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+/* Модем */
+
+.modemCard {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 16px;
+}
+
+.modemName {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.modemFacts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px 16px;
+}
+
+.modemFacts dt {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.modemFacts dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Значения */
+
+.valueGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+/* Soil3D */
+
+.soil {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 16px 16px;
+}
+
+.soilHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.soilControls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.segGroup {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.segBtn,
+.segBtnActive {
+  border: none;
+  background: var(--bg-surface);
+  padding: 6px 12px;
+  cursor: pointer;
+  min-height: 36px;
+}
+
+.segBtnActive {
+  background: var(--brand-olive-dark);
+  color: #fff;
+}
+
+.segBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.soilHint {
+  color: var(--text-secondary);
+  margin: 8px 0;
+}
+
+.soilCanvasWrap {
+  position: relative;
+  height: 300px;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+/* Подписи датчиков: HTML-слой справа, позиция по доле глубины */
+.soilLabels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.soilLabel {
+  position: absolute;
+  right: 10px;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 6px;
+  padding: 1px 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.soilSliderRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.soilPlay {
+  background: var(--brand-olive-dark);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 14px;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.soilPlay:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.soilSlider {
+  flex: 1;
+  min-height: 44px;
+}
+
+.soilTime {
+  min-width: 90px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+/* Исполнители */
+
+.execGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.execCard {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.execName {
+  font-weight: 600;
+  color: var(--brand-blue);
+  text-decoration: none;
+}
+
+.execName:hover {
+  text-decoration: underline;
+}
+
+.execState {
+  font-size: 14px;
+}
+
+.execOn {
+  color: var(--actuator-on);
+}
+
+.execOff {
+  color: var(--actuator-off);
+}
+
+.execFault {
+  color: var(--actuator-fault);
+  font-weight: 600;
+}
+
+.execMode {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.execLink {
+  font-size: 13px;
+  color: var(--brand-blue);
+  text-decoration: none;
+}
+
+.execLink:hover {
+  text-decoration: underline;
+}
+
+/* Тревоги */
+
+.alarmList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.alarmRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+
+.alarmP {
+  font-weight: 600;
+  font-size: 12px;
+  border-radius: 6px;
+  padding: 2px 6px;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.alarmP1 {
+  background: var(--alarm-p1);
+}
+
+.alarmP2 {
+  background: var(--alarm-p2);
+}
+
+.alarmP3 {
+  background: var(--alarm-p3);
+}
+
+.alarmP4 {
+  background: var(--alarm-p4);
+}
+
+.alarmMsg {
+  flex: 1;
+}
+
+.alarmTime {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+@media (max-width: 1023px) {
+  .page {
+    padding: 12px 12px 24px;
+  }
+}
