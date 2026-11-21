@@ -26,6 +26,17 @@ export const ru = {
     NETWORK: 'Нет связи с сервером',
   } as Record<string, string>,
 
+  // Панель отладки мока (T04, только при VITE_USE_MOCK=true)
+  mock: {
+    fab: 'Мок',
+    panelTitle: 'Мок-сервер',
+    scenario: 'Сценарий',
+    speed: 'Ускорение времени',
+    loseAck: 'Терять ack (команды завершаются timeout)',
+    rejectResult: 'Модем отклоняет команду (result_code=1)',
+    reset: 'Сбросить данные',
+  },
+
   // Витрина токенов /dev/tokens (T02)
   devTokens: {
     title: 'Витрина токенов',

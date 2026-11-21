@@ -12,3 +12,4 @@ contract/
 # Сгенерированное
 package-lock.json
 src/api/types.gen.ts
+mockServiceWorker.js
