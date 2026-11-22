@@ -6,8 +6,6 @@ import { Shell } from './layout/Shell'
 import { HomePage } from '@/pages/HomePage'
 import { LoginPage } from '@/pages/LoginPage'
 import { MorePage } from '@/pages/MorePage'
-import { StubPage } from '@/pages/StubPage'
-import { ru } from '@/i18n/ru'
 import { useUiStore } from '@/state/ui'
 
 // 401 из API: сессия уже очищена клиентом — уводим на /login с возвратом
@@ -67,7 +65,10 @@ export const router = createBrowserRouter(
           path: 'audit',
           lazy: () => import('@/pages/AuditPage').then((m) => ({ Component: m.AuditPage })),
         },
-        { path: 'settings/*', element: <StubPage title={ru.shell.navSettings} task="T16" /> },
+        {
+          path: 'settings/*',
+          lazy: () => import('@/pages/SettingsPage').then((m) => ({ Component: m.SettingsPage })),
+        },
         { path: 'more', element: <MorePage /> },
       ],
     },

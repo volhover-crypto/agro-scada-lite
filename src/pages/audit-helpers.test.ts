@@ -52,7 +52,9 @@ describe('diffText / wasNowText — было/стало', () => {
 
   it('wasNowText: пара или null, когда оба пусты', () => {
     expect(
-      wasNowText(entry({ before: { status: 'queued' } as never, after: { status: 'sent_gw' } as never })),
+      wasNowText(
+        entry({ before: { status: 'queued' } as never, after: { status: 'sent_gw' } as never }),
+      ),
     ).toEqual({
       was: 'status: queued',
       now: 'status: sent_gw',
