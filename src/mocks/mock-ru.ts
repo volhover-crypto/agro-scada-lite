@@ -11,5 +11,6 @@ export const mockRu = {
   speed: 'Ускорение времени',
   loseAck: 'Терять ack (команды завершаются timeout)',
   rejectResult: 'Модем отклоняет команду (result_code=1)',
+  modeFail: 'Ломать смену режима (423)',
   reset: 'Сбросить данные',
 }

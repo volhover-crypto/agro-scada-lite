@@ -23,7 +23,7 @@ import {
   remainingText,
   trailView,
 } from './device-helpers'
-import { useCommandActions } from './useCommandActions'
+import { errMsg, useCommandActions } from './useCommandActions'
 import s from './device.module.css'
 
 /*
@@ -66,7 +66,10 @@ export function DevicePage() {
   const actuator = actuators?.find((a) => a.id === id)
   const post = posts?.find((p) => p.id === actuator?.post_id)
   const simMode = useUiStore((st) => st.simMode)
+  const offlineSince = useUiStore((st) => st.offlineSince)
   const setMode = useSetMode()
+  // FIX-4: ошибка смены режима показывается у переключателя
+  const [modeError, setModeError] = useState<string | null>(null)
 
   // подтверждено HH:MM — время ack последней выполненной команды (05 §5 «Факт»)
   const lastAckTime = useMemo(() => {
@@ -104,12 +107,23 @@ export function DevicePage() {
         actuator={actuator}
         simMode={simMode}
         lastAckTime={lastAckTime}
-        onSetMode={(mode) => setMode.mutate({ id: actuator.id!, mode })}
+        offlineSince={offlineSince}
+        modeError={modeError}
+        onSetMode={(mode) =>
+          setMode.mutate(
+            { id: actuator.id!, mode },
+            {
+              onSuccess: () => setModeError(null),
+              onError: (e) => setModeError(errMsg(e)),
+            },
+          )
+        }
       />
       <CommandCard
         actuator={actuator}
         simMode={simMode}
         current={history[0]}
+        linkDown={offlineSince != null}
         onRefetch={() => void refetchActuators()}
       />
       <HistoryCard history={history} defs={actuator.commands ?? []} simMode={simMode} />
@@ -122,11 +136,15 @@ function ModeCard({
   actuator,
   simMode,
   lastAckTime,
+  offlineSince,
+  modeError,
   onSetMode,
 }: {
   actuator: ActuatorT
   simMode: boolean
   lastAckTime: string | null
+  offlineSince: string | null
+  modeError: string | null
   onSetMode: (mode: 'auto' | 'manual') => void
 }) {
   return (
@@ -166,6 +184,16 @@ function ModeCard({
       </p>
       {actuator.mode === 'manual' && <p className={s.hint}>{ru.device.manualHint}</p>}
       {simMode && <p className={s.hint}>{ru.device.simNote}</p>}
+      {offlineSince != null && (
+        <p className={s.warnBanner} data-testid="stale-data-warning">
+          {ru.device.staleSince.replace('{time}', formatTimeRu(offlineSince))}
+        </p>
+      )}
+      {modeError != null && (
+        <p className={s.outcomeFail} role="alert" data-testid="mode-error">
+          {modeError}
+        </p>
+      )}
     </div>
   )
 }
@@ -240,11 +268,14 @@ function CommandCard({
   actuator,
   simMode,
   current,
+  linkDown,
   onRefetch,
 }: {
   actuator: ActuatorT
   simMode: boolean
   current: CommandT | undefined
+  /** FIX-3: нет связи с сервером — включение/открытие блокируются */
+  linkDown: boolean
   onRefetch: () => void
 }) {
   const defs = actuator.commands ?? []
@@ -273,7 +304,14 @@ function CommandCard({
       {current && (
         <StatusTrail
           command={current}
-          onRetry={() => actions.issue(lastDef(defs, current), undefined, actuator.name ?? '')}
+          // FIX-2: «Повторить» повторяет исходную длительность
+          onRetry={() =>
+            actions.issue(
+              lastDef(defs, current),
+              current.duration_s ?? undefined,
+              actuator.name ?? '',
+            )
+          }
         />
       )}
 
@@ -297,6 +335,7 @@ function CommandCard({
         durationS={withDuration ? (seconds ?? undefined) : undefined}
         busy={actions.busy}
         disabled={overMax || (withDuration && seconds == null)}
+        linkDown={linkDown}
         simMode={simMode}
         onIssue={actions.issue}
       />
@@ -311,7 +350,8 @@ function CommandCard({
   )
 }
 
-/** Кнопки действий (ВКЛЮЧИТЬ/ПРОДЛИТЬ, ВЫКЛЮЧИТЬ/ЗАКРЫТЬ) + пометка симулятора */
+/** Кнопки действий (ВКЛЮЧИТЬ/ПРОДЛИТЬ, ВЫКЛЮЧИТЬ/ЗАКРЫТЬ) + пометка симулятора.
+ *  FIX-3: linkDown блокирует включение/открытие; выключение — по решению владельца */
 function ActionButtons({
   onDef,
   offDef,
@@ -320,6 +360,7 @@ function ActionButtons({
   durationS,
   busy,
   disabled,
+  linkDown,
   simMode,
   onIssue,
 }: {
@@ -330,8 +371,9 @@ function ActionButtons({
   durationS: number | undefined
   busy: boolean
   disabled: boolean
+  linkDown: boolean
   simMode: boolean
-  onIssue: (def: CommandDefT, durationS: number | undefined, deviceName: string) => void
+  onIssue: (def: CommandDefT | undefined, durationS: number | undefined, deviceName: string) => void
 }) {
   return (
     <div className={s.actions}>
@@ -339,7 +381,7 @@ function ActionButtons({
         <button
           type="button"
           className={s.primaryBtn}
-          disabled={busy || disabled}
+          disabled={busy || disabled || linkDown}
           data-testid="primary-action"
           onClick={() => onIssue(onDef, durationS, deviceName)}
         >
@@ -362,10 +404,10 @@ function ActionButtons({
   )
 }
 
-function lastDef(defs: CommandDefT[], cmd: CommandT): CommandDefT {
-  const def = defs.find((d) => d.id === cmd.command_def_id)
-  if (!def) throw new Error('def not found')
-  return def
+/** FIX-2: определение исходной команды; отсутствие — не исключение,
+ *  ошибку покажет issue() */
+function lastDef(defs: CommandDefT[], cmd: CommandT): CommandDefT | undefined {
+  return defs.find((d) => d.id === cmd.command_def_id)
 }
 
 /** Цепочка статусов + исход; «Выполнено» — только acked/completed */

@@ -105,6 +105,33 @@ test('cmd_fail: потеря ack → «Не подтверждено модем�
   await page.getByRole('button', { name: 'Отмена' }).click()
 })
 
+// FIX-4 (аудит §8.8): ошибка смены режима показывается у переключателя.
+// Отказ имитируется тумблером панели отладки мока (04 §5): Playwright route
+// не перехватывает запросы из service worker (MSW)
+test('FIX-4: смена режима — ошибка сервера видна пользователю', async ({ page }) => {
+  await page.goto('/?scenario=normal')
+  await page.waitForFunction(
+    () => (window as unknown as Record<string, unknown>).__mockReady === true,
+  )
+  await page.waitForURL(/\/login/)
+  await page.getByLabel('Логин').fill('demo')
+  await page.getByLabel('Пароль').fill('demo')
+  await page.getByRole('button', { name: 'Войти' }).click()
+  await page.waitForURL('/')
+  await page.goto('/a/2')
+
+  await expect(page.getByRole('heading', { name: /Клапан 1 · Пост 7/ })).toBeVisible()
+  // открыть панель отладки мока и включить сбой смены режима
+  await page.getByRole('button', { name: '⚙ Мок' }).click()
+  await page.getByRole('checkbox', { name: 'Ломать смену режима (423)' }).check()
+  await page.getByRole('button', { name: '⚙ Мок' }).click() // свернуть панель
+
+  await page.getByRole('button', { name: 'Ручной' }).click()
+  await expect(page.getByTestId('mode-error')).toContainText('Режим заблокирован командой', {
+    timeout: 10_000,
+  })
+})
+
 test('link_loss, Клапан 4: модем offline — предупреждение «команда ждёт до HH:MM»', async ({
   page,
 }) => {

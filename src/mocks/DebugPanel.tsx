@@ -26,6 +26,7 @@ export function DebugPanel() {
   const [speed, setSpeed] = useState(store.speed)
   const [loseAck, setLoseAck] = useState(store.fail.loseAck)
   const [rejectResult, setRejectResult] = useState(store.fail.rejectResult)
+  const [modeFail, setModeFail] = useState(store.fail.modeFail)
 
   return (
     <div className={s.root}>
@@ -87,6 +88,18 @@ export function DebugPanel() {
               }}
             />
             {ru.rejectResult}
+          </label>
+
+          <label className={s.check}>
+            <input
+              type="checkbox"
+              checked={modeFail}
+              onChange={(e) => {
+                setModeFail(e.target.checked)
+                store.fail.modeFail = e.target.checked
+              }}
+            />
+            {ru.modeFail}
           </label>
 
           <button

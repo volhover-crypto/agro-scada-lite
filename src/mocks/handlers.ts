@@ -424,6 +424,10 @@ export const handlers = [
     if (body.mode !== 'auto' && body.mode !== 'manual') {
       return err(422, 'VALIDATION', 'mode должен быть auto или manual')
     }
+    // Настраиваемый сбой панели отладки (04 §5): смена режима падает 423
+    if (store.fail.modeFail) {
+      return err(423, 'MODE_LOCKED', 'Режим заблокирован командой')
+    }
     const before = act.mode
     act.mode = body.mode
     act.mode_changed_at = touch()

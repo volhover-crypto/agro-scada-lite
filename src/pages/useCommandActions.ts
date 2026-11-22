@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import type { components } from '@/api/types.gen'
+import { ApiError } from '@/api/client'
 import { useCancelCommand, useConfirmCommand, useCreateCommand } from '@/api/endpoints/commands'
 import { ru } from '@/i18n/ru'
 import { durationLabel } from './device-helpers'
@@ -11,10 +12,12 @@ export function errMsg(e: unknown): string {
 
 /*
  * Мутационная логика команд страницы устройства (05 §5): создание с
- * идемпотентностью (тот же ключ, пока попытка в полёте — двойное нажатие
- * дедуплицируется; «Повторить» после timeout — новая команда с новым ключом),
- * диалог подтверждения (created awaiting_confirm → hold → /confirm; закрытие —
- * /cancel). Вынесено из CommandCard (crapper CC).
+ * идемпотентностью (FIX-1: ключ живёт, пока исход попытки неизвестен —
+ * при сетевой ошибке/таймауте/5xx он НЕ сбрасывается и повторное нажатие
+ * уходит с тем же ключом; успех или бизнес-ошибка 4xx — исход известен,
+ * ключ сбрасывается. «Повторить» после timeout — новая команда с новым
+ * ключом, D-41), диалог подтверждения (created awaiting_confirm → hold →
+ * /confirm; закрытие — /cancel). Вынесено из CommandCard (crapper CC).
  */
 
 type CommandDefT = components['schemas']['CommandDef']
@@ -26,7 +29,8 @@ export interface CommandActions {
   /** uuid команды в ожидании подтверждения (диалог открыт) */
   pendingUuid: string | null
   pendingTitle: string
-  issue: (def: CommandDefT, durationS: number | undefined, deviceName: string) => void
+  /** def может отсутствовать в каталоге (FIX-2) — тогда показываем ошибку */
+  issue: (def: CommandDefT | undefined, durationS: number | undefined, deviceName: string) => void
   confirmPending: () => void
   cancelPending: () => void
 }
@@ -45,8 +49,17 @@ export function useCommandActions(onAfterChange: () => void): CommandActions {
     return keyRef.current
   }
 
-  function issue(def: CommandDefT, durationS: number | undefined, deviceName: string): void {
+  function issue(
+    def: CommandDefT | undefined,
+    durationS: number | undefined,
+    deviceName: string,
+  ): void {
     if (create.isPending || confirmCmd.isPending) return // двойное нажатие — блок до ответа
+    // FIX-2: определение не найдено — ошибка пользователю, не исключение
+    if (!def) {
+      setError(ru.device.defNotFound)
+      return
+    }
     setError(null)
     create.mutate(
       { command_def_id: def.id!, duration_s: durationS ?? undefined, idempotency_key: ensureKey() },
@@ -64,7 +77,11 @@ export function useCommandActions(onAfterChange: () => void): CommandActions {
           }
         },
         onError: (e) => {
-          keyRef.current = null
+          // FIX-1: исход попытки неизвестен (сеть/таймаут — status 0, сервер
+          // не ответил — 5xx) → ключ сохраняется для повторного нажатия;
+          // известный исход (успех выше, бизнес-ошибка 4xx) → ключ сбрасывается
+          const outcomeKnown = e instanceof ApiError && e.status !== 0 && e.status < 500
+          if (outcomeKnown) keyRef.current = null
           setError(errMsg(e))
         },
       },

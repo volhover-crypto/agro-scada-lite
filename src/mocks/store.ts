@@ -89,7 +89,7 @@ export interface MockStore {
   simMode: boolean
   /** Ускорение времени для длительностей: 30 мин → 30 с (04 §3) */
   speed: 1 | 60
-  fail: { loseAck: boolean; rejectResult: boolean }
+  fail: { loseAck: boolean; rejectResult: boolean; modeFail: boolean }
   loginFails: { count: number; windowStart: number }
   timers: Set<unknown>
   cmdSeq: number
@@ -107,7 +107,7 @@ export const store: MockStore = {
   journal: [],
   simMode: false,
   speed: 60,
-  fail: { loseAck: false, rejectResult: false },
+  fail: { loseAck: false, rejectResult: false, modeFail: false },
   loginFails: { count: 0, windowStart: 0 },
   timers: new Set<unknown>(),
   cmdSeq: 40210,
@@ -175,7 +175,7 @@ export function resetStore(scenario: string = 'normal'): void {
   store.journal = []
   store.simMode = false
   store.speed = 60
-  store.fail = { loseAck: false, rejectResult: false }
+  store.fail = { loseAck: false, rejectResult: false, modeFail: false }
   store.loginFails = { count: 0, windowStart: 0 }
   store.cmdSeq = 40210
   touch()
