@@ -154,13 +154,16 @@ describe('FIX-2: повтор с исходной длительностью', (
 
 // FIX-3: нет связи с сервером → предупреждение и блокировка включения/открытия
 describe('FIX-3: данные устарели (offlineSince)', () => {
-  it('текст «данные устарели с HH:MM» и ВКЛЮЧИТЬ заблокирована', async () => {
+  it('текст «данные устарели с HH:MM», ВКЛЮЧИТЬ заблокирована, у ВЫКЛЮЧИТЬ — предупреждение', async () => {
     useUiStore.setState({ offlineSince: '2026-11-22T12:34:00+03:00' })
     renderDevice('/a/2')
     expect(await screen.findByTestId('stale-data-warning')).toHaveTextContent('12:34')
     expect(screen.getByTestId('primary-action')).toBeDisabled()
-    // выключение НЕ блокируется — решение владельца ещё не принято
+    // решение владельца: выключение НЕ блокируем, но предупреждаем честно
     expect(screen.getByTestId('secondary-action')).toBeEnabled()
+    expect(screen.getByTestId('off-link-warning')).toHaveTextContent(
+      'Связь потеряна, команда может не дойти',
+    )
     useUiStore.setState({ offlineSince: null })
   })
 })

@@ -399,6 +399,13 @@ function ActionButtons({
           {actionLabel(offDef.action!, factState)}
         </button>
       )}
+      {/* FIX-3 (решение владельца): выключение при потерянной связи не
+          блокируем, но честно предупреждаем */}
+      {linkDown && offDef && (
+        <span className={s.simNote} data-testid="off-link-warning">
+          {ru.device.offLinkWarning}
+        </span>
+      )}
       {simMode && <span className={s.simNote}>{ru.device.simNote}</span>}
     </div>
   )
