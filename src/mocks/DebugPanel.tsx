@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ru } from '@/i18n/ru'
+import { mockRu as ru } from './mock-ru'
 import { applyScenario, SCENARIOS } from './scenarios'
 import { store } from './store'
 import s from './debug.module.css'
@@ -30,11 +30,11 @@ export function DebugPanel() {
   return (
     <div className={s.root}>
       {open && (
-        <div className={s.panel} role="dialog" aria-label={ru.mock.panelTitle}>
-          <h2 className={s.title}>{ru.mock.panelTitle}</h2>
+        <div className={s.panel} role="dialog" aria-label={ru.panelTitle}>
+          <h2 className={s.title}>{ru.panelTitle}</h2>
 
           <label className={s.field}>
-            {ru.mock.scenario}
+            {ru.scenario}
             <select
               value={scenario}
               onChange={(e) => {
@@ -51,7 +51,7 @@ export function DebugPanel() {
           </label>
 
           <label className={s.field}>
-            {ru.mock.speed}
+            {ru.speed}
             <select
               value={speed}
               onChange={(e) => {
@@ -74,7 +74,7 @@ export function DebugPanel() {
                 store.fail.loseAck = e.target.checked
               }}
             />
-            {ru.mock.loseAck}
+            {ru.loseAck}
           </label>
 
           <label className={s.check}>
@@ -86,7 +86,7 @@ export function DebugPanel() {
                 store.fail.rejectResult = e.target.checked
               }}
             />
-            {ru.mock.rejectResult}
+            {ru.rejectResult}
           </label>
 
           <button
@@ -96,12 +96,12 @@ export function DebugPanel() {
               applyScenario(scenario as (typeof SCENARIOS)[number])
             }}
           >
-            {ru.mock.reset}
+            {ru.reset}
           </button>
         </div>
       )}
       <button type="button" className={s.fab} onClick={() => setOpen(!open)} aria-expanded={open}>
-        ⚙ {ru.mock.fab}
+        ⚙ {ru.fab}
       </button>
     </div>
   )

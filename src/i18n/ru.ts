@@ -422,7 +422,7 @@ export const ru = {
   devWidgets: {
     title: 'Витрина виджетов',
     subtitle:
-      'Card, Lamp, Gauge на данных мока. В сценарии quality каждый виджет показывает статусы качества по 06_DESIGN_TOKENS',
+      'Card, Lamp, Gauge на демонстрационных данных. Показ quality: каждый виджет демонстрирует статусы качества по 06_DESIGN_TOKENS',
     sectionCard: 'Card — последнее значение, тренд 24 ч',
     sectionGauge: 'Gauge — стрелочный индикатор с зонами',
     sectionLamp: 'Lamp — сигнальная лампа (порог)',
@@ -452,17 +452,6 @@ export const ru = {
     RATE_LIMIT: 'Слишком много попыток, повторите через минуту',
     NETWORK: 'Нет связи с сервером',
   } as Record<string, string>,
-
-  // Панель отладки мока (T04, только при VITE_USE_MOCK=true)
-  mock: {
-    fab: 'Мок',
-    panelTitle: 'Мок-сервер',
-    scenario: 'Сценарий',
-    speed: 'Ускорение времени',
-    loseAck: 'Терять ack (команды завершаются timeout)',
-    rejectResult: 'Модем отклоняет команду (result_code=1)',
-    reset: 'Сбросить данные',
-  },
 
   // Витрина токенов /dev/tokens (T02)
   devTokens: {
