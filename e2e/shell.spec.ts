@@ -75,3 +75,26 @@ test('баннер P1 в pressure_drop: появляется, «Открыть»
   await expect(page).toHaveURL(/\/o\/2$/)
   await expect(page.getByRole('heading', { level: 1, name: 'Насосная-1' })).toBeVisible()
 })
+
+// Приёмка T18 (обязательный сценарий №2): pressure_drop → баннер → ack
+test('баннер P1 в pressure_drop: [Подтвердить] убирает баннер, тревога — Подтверждена', async ({
+  page,
+}) => {
+  test.setTimeout(120_000)
+  await page.goto('/?scenario=pressure_drop')
+  await login(page)
+
+  const banner = page.getByRole('alert')
+  await expect(banner).toContainText('Давление 1,2 бар ниже 1,5', { timeout: 60_000 })
+
+  // ack с баннера: мутация инвалидирует ['alarms'] — баннер исчезает
+  await banner.getByRole('button', { name: 'Подтвердить' }).click()
+  await expect(banner).toBeHidden({ timeout: 30_000 })
+
+  // страница тревог: отметка ack (навигация клиент-сайд, D-25)
+  await page
+    .getByRole('navigation', { name: 'Основное меню' })
+    .getByRole('link', { name: 'Тревоги' })
+    .click()
+  await expect(page.getByText(/Подтвердил demo/)).toBeVisible({ timeout: 30_000 })
+})
