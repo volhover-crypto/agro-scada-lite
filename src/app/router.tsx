@@ -63,7 +63,10 @@ export const router = createBrowserRouter(
           path: 'schedules',
           lazy: () => import('@/pages/SchedulesPage').then((m) => ({ Component: m.SchedulesPage })),
         },
-        { path: 'audit', element: <StubPage title={ru.shell.navAudit} task="T15" /> },
+        {
+          path: 'audit',
+          lazy: () => import('@/pages/AuditPage').then((m) => ({ Component: m.AuditPage })),
+        },
         { path: 'settings/*', element: <StubPage title={ru.shell.navSettings} task="T16" /> },
         { path: 'more', element: <MorePage /> },
       ],
