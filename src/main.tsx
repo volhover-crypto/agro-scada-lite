@@ -7,11 +7,17 @@ import '@fontsource/inter/400.css'
 import '@fontsource/inter/600.css'
 import { installUnauthorizedRedirect, router } from '@/app/router'
 import { queryClient } from '@/api/queryClient'
+import { registerSW } from 'virtual:pwa-register'
 import '@/styles/tokens.css'
 import '@/styles/global.css'
 
 // 401 из любого запроса → /login (02 §4)
 installUnauthorizedRedirect(router)
+
+// PWA (T17): регистрация service worker кэша оболочки.
+// В dev плагин SW не отдаёт (devOptions off) — виртуальный модуль делает no-op;
+// воркер MSW остаётся единственным service worker в dev/e2e.
+registerSW({ immediate: true })
 
 function render(): void {
   createRoot(document.getElementById('root')!).render(
