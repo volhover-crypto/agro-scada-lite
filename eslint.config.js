@@ -7,7 +7,16 @@ import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
   // Артефакты сборки/тестов и сгенерированные типы не линтим
-  { ignores: ['dist', 'coverage', 'playwright-report', 'test-results', 'src/api/types.gen.ts'] },
+  {
+    ignores: [
+      'dist',
+      'coverage',
+      'playwright-report',
+      'test-results',
+      'src/api/types.gen.ts',
+      '.zcode-site/',
+    ],
+  },
 
   // База для всех js/ts-файлов
   { extends: [js.configs.recommended, ...tseslint.configs.recommended] },
