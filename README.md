@@ -36,4 +36,4 @@ React + TypeScript (strict) + Vite; данные — TanStack Query, состо�
 
 ## Развёртывание
 
-Прод-артефакт `dist/` раздаётся Caddy по `/dash/*` (SPA fallback на `/dash/index.html`). Подробнее — `docs/spec/09_INTEGRATION_CHECKLIST.md`; `README_DEPLOY.md` появится в T19.
+Прод-артефакт `dist/` раздаётся Caddy по `/dash/*` (SPA fallback на `/dash/index.html`). Подробнее — `README_DEPLOY.md` и `docs/spec/09_INTEGRATION_CHECKLIST.md`.

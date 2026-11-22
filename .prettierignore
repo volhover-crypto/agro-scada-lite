@@ -9,6 +9,10 @@ test-results
 docs/spec/
 contract/
 
+# Исходный пакет документации — без правок, в том числе без форматирования
+# (условие передачи: agent_pack не изменять)
+agent_pack/
+
 # Сгенерированное
 package-lock.json
 src/api/types.gen.ts
