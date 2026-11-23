@@ -425,9 +425,56 @@
 
 .chartsControls {
   display: flex;
-  gap: var(--space-2);
+  gap: var(--space-3);
   flex-wrap: wrap;
   align-items: center;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-2) var(--space-3);
+}
+
+.dateGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.dateInput {
+  font: inherit;
+  min-height: var(--touch-min);
+  padding: var(--space-1) var(--space-2);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-btn);
+  color: var(--text-primary);
+}
+
+.presetGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.presetBtn {
+  font: inherit;
+  font-weight: var(--font-weight-heading);
+  min-height: var(--touch-min);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-btn);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.presetBtnActive {
+  background: var(--brand-olive-dark);
+  border-color: var(--brand-olive-dark);
+  color: var(--bg-surface);
 }
 
 .controlLabel {

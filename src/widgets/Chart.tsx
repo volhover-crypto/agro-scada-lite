@@ -22,6 +22,7 @@ export interface ChartWidgetProps {
   title?: string
   tags: string[]
   period?: Period
+  customRange?: { from: string; to: string }
   agg?: Agg
   thresholds?: WidgetThreshold[]
 }
@@ -118,12 +119,16 @@ export function ChartWidget({
   title,
   tags,
   period = '24h',
+  customRange,
   agg = 'avg',
   thresholds = NO_THRESHOLDS,
 }: ChartWidgetProps) {
   // текущие значения: имена тегов + признак прогноза
   const current = useTagValues(tags, 60_000)
-  const range = useMemo(() => periodRange(period), [period])
+  const range = useMemo(
+    () => customRange ?? periodRange(period),
+    [customRange, period],
+  )
   const { step, agg: effAgg } = pickStepAgg(period, agg)
   const hist = useTagHistory(tags, { ...range, step, agg: effAgg })
 

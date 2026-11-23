@@ -12,22 +12,36 @@ import s from '@/widgets/widgets.module.css'
 
 /*
  * Графики (05 §7): выбор тегов (дерево Объект → Пост → Параметр, поиск), до 8;
- * период 24 ч / 7 д / 30 д / свой; агрегация; «Сохранить вид» — в dashboards
- * выбранного объекта ([ASSUMPTION] В6). 9-й тег — «Не более 8 рядов».
+ * календарь выбора периода + компактные пресеты 24 ч / 7 дн / 30 дн сбоку;
+ * агрегация; «Сохранить вид» — в dashboards выбранного объекта ([ASSUMPTION] В6).
  */
 
 type ChannelT = components['schemas']['Channel']
 type TagValueT = components['schemas']['TagValue']
 
-const PERIODS: Array<[Period, string]> = [
-  ['24h', '24 часа'],
-  ['7d', '7 дней'],
-  ['30d', '30 дней'],
+const PERIODS: Array<[Period, string, number]> = [
+  ['24h', '24 ч', 1],
+  ['7d', '7 дн', 7],
+  ['30d', '30 дн', 30],
 ]
+
+function toDateInput(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+function presetDates(days: number): { from: string; to: string } {
+  const to = new Date()
+  const from = new Date(to.getTime() - days * 86_400_000)
+  return { from: toDateInput(from), to: toDateInput(to) }
+}
 
 export function ChartsPage() {
   const [selected, setSelected] = useState<string[]>([])
-  const [period, setPeriod] = useState<Period>('24h')
+  const [period, setPeriod] = useState<Period | null>('24h')
+  const [dateRange, setDateRange] = useState(() => presetDates(1))
   const [agg, setAgg] = useState<Agg>('avg')
   const [search, setSearch] = useState('')
   const [limitHit, setLimitHit] = useState(false)
@@ -43,6 +57,13 @@ export function ChartsPage() {
   )
   const filtered = useMemo(() => filterTree(tree, search), [tree, search])
 
+  const customRange = useMemo(() => {
+    if (period != null) return undefined
+    const fromIso = new Date(`${dateRange.from}T00:00:00`).toISOString()
+    const toIso = new Date(`${dateRange.to}T23:59:59`).toISOString()
+    return { from: fromIso, to: toIso }
+  }, [period, dateRange])
+
   const save = useMutation({
     mutationFn: () =>
       api.post('/dashboards', {
@@ -53,13 +74,18 @@ export function ChartsPage() {
             id: 'chart-main',
             kind: 'chart',
             tags: selected,
-            options: { period, agg },
+            options: { period: period ?? '7d', agg },
             grid: { x: 0, y: 0, w: 12, h: 4 },
           },
         ],
       }),
     onSuccess: () => setSaved(true),
   })
+
+  function selectPreset(p: Period, days: number) {
+    setPeriod(p)
+    setDateRange(presetDates(days))
+  }
 
   function toggle(tagId: string) {
     setSaved(false)
@@ -81,18 +107,49 @@ export function ChartsPage() {
       <h1>{ru.shell.navCharts}</h1>
 
       <div className={s.chartsControls}>
-        <span className={s.controlLabel}>Период:</span>
-        {PERIODS.map(([p, label]) => (
-          <button
-            key={p}
-            type="button"
-            className={p === period ? `${s.treeItem} ${s.treeGroup}` : s.treeItem}
-            aria-pressed={p === period}
-            onClick={() => setPeriod(p)}
-          >
-            {label}
-          </button>
-        ))}
+        <div className={s.dateGroup}>
+          <span className={s.controlLabel}>Период:</span>
+          <input
+            type="date"
+            className={s.dateInput}
+            aria-label="Дата начала"
+            value={dateRange.from}
+            max={dateRange.to}
+            onChange={(e) => {
+              if (!e.target.value) return
+              setPeriod(null)
+              setDateRange((r) => ({ ...r, from: e.target.value }))
+            }}
+          />
+          <span className={s.controlLabel}>—</span>
+          <input
+            type="date"
+            className={s.dateInput}
+            aria-label="Дата окончания"
+            value={dateRange.to}
+            min={dateRange.from}
+            onChange={(e) => {
+              if (!e.target.value) return
+              setPeriod(null)
+              setDateRange((r) => ({ ...r, to: e.target.value }))
+            }}
+          />
+        </div>
+
+        <div className={s.presetGroup} role="group" aria-label="Быстрый выбор периода">
+          {PERIODS.map(([p, label, days]) => (
+            <button
+              key={p}
+              type="button"
+              className={p === period ? `${s.presetBtn} ${s.presetBtnActive}` : s.presetBtn}
+              aria-pressed={p === period}
+              onClick={() => selectPreset(p, days)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
         <span className={s.controlLabel}>Агрегация:</span>
         <select
           className={s.controlSelect}
@@ -104,6 +161,7 @@ export function ChartsPage() {
           <option value="min">минимум</option>
           <option value="max">максимум</option>
         </select>
+
         <button
           type="button"
           className={s.saveBtn}
@@ -175,7 +233,8 @@ export function ChartsPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
           <ChartWidget
             tags={selected}
-            period={period}
+            period={period ?? '7d'}
+            customRange={customRange}
             agg={agg}
             title={selected.length ? undefined : ru.charts.emptyHint}
           />
