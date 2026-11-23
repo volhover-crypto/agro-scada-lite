@@ -2,11 +2,17 @@
 
 Адаптивное веб-приложение (PWA) для мониторинга агро-объектов (LoRaWAN-датчики, посты, базовые станции) и управления исполнительными устройствами (насосы, клапаны, вентиляторы, форточки, реле). Бэкенд (n8n + PostgreSQL) делает отдельный исполнитель; фронтенд работает по контракту против мока (MSW) и переключается на реальный API одной переменной окружения.
 
+## Демо-стенд
+
+- **GitHub Pages (мок MSW):** [https://volhover-crypto.github.io/agro-scada-lite/](https://volhover-crypto.github.io/agro-scada-lite/)
+- **Вход:** `demo` / `demo`
+- Автодеплой настроен через `.github/workflows/deploy-pages.yml` при каждом пуше в `main`.
+
 ## Документация
 
 - Спецификации пакета: `docs/spec/` (01–09, справочные BACKEND_*)
 - Контракт API — единственный источник правды: `contract/03_API_CONTRACT.yaml`
-- Ход работ: `docs/PROGRESS.md` · Решения: `docs/DECISIONS.md` · Вопросы: `docs/QUESTIONS.md` · Запросы к контракту: `docs/CONTRACT_REQUESTS.md`
+- Ход работ: `docs/PROGRESS.md` · Решения: `docs/DECISIONS.md` · Вопросы: `docs/QUESTIONS.md` · Запросы к контракту: `docs/CONTRACT_REQUESTS.md` · Аудит: `docs/AUDIT_ISSUES.md`
 
 ## Стек
 
