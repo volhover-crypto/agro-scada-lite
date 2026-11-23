@@ -19,9 +19,8 @@ import {
 
 /*
  * 3D-сцена объекта (07 §3.1): изометрия (ортокамера, вращение ±45°, зум, сброс),
- * поверхность, инстансинг рядов культур, посты «ТОЧКА» с кольцами статуса,
- * пунктирные линии связи к БС, HTML-метки (название, значения, время, тревога),
- * значки исполнителей (вкл — пульс/поток). Клик по посту → панель поста.
+ * светлая поверхность, ряды виноградника с листвой, детализированные посты «ТОЧКА»,
+ * пунктирные линии связи к БС. Подробная карточка поста — только при выделении.
  */
 
 type PostT = components['schemas']['Post']
@@ -41,9 +40,10 @@ export interface Scene3DProps {
   children: (postId: number) => ReactNode
 }
 
-const SOIL_LIGHT = '#8B6A47'
-const SOIL_DARK = '#6E5236'
-const WOOD = '#6E5236'
+const SOIL_LIGHT = '#C8AE86'
+const WOOD = '#8D6E4C'
+const TRELLIS_WIRE = '#A68B6B'
+const FOLIAGE = '#6B9B3E'
 const DATA_BLUE = '#2F7FD8'
 
 export function ObjectScene3D({
@@ -89,9 +89,10 @@ export function ObjectScene3D({
           far: 200,
         }}
       >
-        <color attach="background" args={['#EFE6D6']} />
-        <ambientLight intensity={1.1} />
-        <directionalLight position={[10, 20, 10]} intensity={0.8} />
+        <color attach="background" args={['#F4EDE0']} />
+        <hemisphereLight args={['#FFFDF7', '#B89B72', 1.15]} />
+        <ambientLight intensity={0.7} />
+        <directionalLight position={[18, 28, 16]} intensity={1.35} color="#FFF8EA" />
         <OrbitControls
           ref={controlsRef}
           target={[center[0], 0, center[1]]}
@@ -106,19 +107,36 @@ export function ObjectScene3D({
           cz={center[1]}
           sizeX={Math.max(24, ...scaled.map((p) => Math.abs(p.x - center[0]) * 2)) + 24}
           sizeY={Math.max(16, ...scaled.map((p) => Math.abs(p.y - center[1]) * 2)) + 24}
+          onClear={() => onSelectPost(null)}
         />
         <CropRows objectType={objectType} positions={scaled} />
         {bs.map(([x, y], i) => (
           <group key={`bs${i}`} position={[x, 0, y]}>
-            <mesh position={[0, 0.5, 0]}>
-              <boxGeometry args={[1.2, 1, 1.2]} />
-              <meshLambertMaterial color="#4A4F55" />
+            {/* светлый шкаф базовой станции */}
+            <mesh position={[0, 0.55, 0]}>
+              <boxGeometry args={[1.25, 1.1, 1.15]} />
+              <meshStandardMaterial color="#E6E1D6" roughness={0.6} />
             </mesh>
-            <mesh position={[0, 1.6, 0]}>
-              <cylinderGeometry args={[0.06, 0.06, 1.4]} />
-              <meshLambertMaterial color="#4A4F55" />
+            {/* козырёк */}
+            <mesh position={[0, 1.15, 0]}>
+              <boxGeometry args={[1.38, 0.1, 1.28]} />
+              <meshStandardMaterial color="#5A636A" roughness={0.5} />
             </mesh>
-            <Html center position={[0, 2.4, 0]}>
+            {/* мачта и LoRa-антенна */}
+            <mesh position={[0, 2.0, 0]}>
+              <cylinderGeometry args={[0.05, 0.07, 1.7]} />
+              <meshStandardMaterial color="#8A9299" metalness={0.4} roughness={0.4} />
+            </mesh>
+            <mesh position={[0, 2.95, 0]}>
+              <cylinderGeometry args={[0.09, 0.09, 0.55]} />
+              <meshStandardMaterial color="#F7F5F0" roughness={0.3} />
+            </mesh>
+            {/* индикатор связи */}
+            <mesh position={[0.45, 0.85, 0.6]}>
+              <sphereGeometry args={[0.08, 12, 12]} />
+              <meshBasicMaterial color="#3E9A4A" />
+            </mesh>
+            <Html center position={[0, 3.55, 0]}>
               <span className={sc.bsLabel}>БС-{i + 1}</span>
             </Html>
           </group>
@@ -132,7 +150,7 @@ export function ObjectScene3D({
             alarms={alarms}
             bs={bs}
             selected={selectedPostId === p.postId}
-            onSelect={() => onSelectPost(p.postId)}
+            onSelect={() => onSelectPost(selectedPostId === p.postId ? null : p.postId)}
           />
         ))}
       </Canvas>
@@ -146,22 +164,30 @@ function Ground({
   cz,
   sizeX,
   sizeY,
+  onClear,
 }: {
   cx: number
   cz: number
   sizeX: number
   sizeY: number
+  onClear: () => void
 }) {
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[cx, 0, cz]} receiveShadow={false}>
+    <mesh
+      rotation={[-Math.PI / 2, 0, 0]}
+      position={[cx, 0, cz]}
+      onClick={(e) => {
+        e.stopPropagation()
+        onClear()
+      }}
+    >
       <planeGeometry args={[sizeX, sizeY]} />
-      <meshLambertMaterial color={SOIL_LIGHT} />
+      <meshStandardMaterial color={SOIL_LIGHT} roughness={0.95} />
     </mesh>
   )
 }
 
-/** Ряды культур инстансингом (07 §3.1): столбы+шпалера для виноградника,
- *  деревья для сада; насосная — без рядов */
+/** Ряды культур инстансингом (07 §3.1): столбы + шпалера + зелёная крона виноградника */
 function CropRows({
   objectType,
   positions,
@@ -184,15 +210,24 @@ function CropRows({
     return items
   }, [positions, objectType])
 
-  const ref = useRef<THREE.InstancedMesh>(null)
+  const postsRef = useRef<THREE.InstancedMesh>(null)
+  const foliageRef = useRef<THREE.InstancedMesh>(null)
+
   useEffect(() => {
-    if (ref.current) {
-      const m = new THREE.Matrix4()
+    const m = new THREE.Matrix4()
+    if (postsRef.current) {
       columns.forEach((c, i) => {
         m.setPosition(c.x, 0.75, c.z)
-        ref.current!.setMatrixAt(i, m)
+        postsRef.current!.setMatrixAt(i, m)
       })
-      ref.current.instanceMatrix.needsUpdate = true
+      postsRef.current.instanceMatrix.needsUpdate = true
+    }
+    if (foliageRef.current) {
+      columns.forEach((c, i) => {
+        m.setPosition(c.x, 1.05, c.z)
+        foliageRef.current!.setMatrixAt(i, m)
+      })
+      foliageRef.current.instanceMatrix.needsUpdate = true
     }
   }, [columns])
 
@@ -200,22 +235,35 @@ function CropRows({
 
   return (
     <group>
+      {/* столбы шпалеры */}
       <instancedMesh
-        ref={ref}
+        ref={postsRef}
         args={[
           undefined as unknown as THREE.BufferGeometry,
           undefined as unknown as THREE.Material,
           Math.max(1, columns.length),
         ]}
       >
-        <boxGeometry args={[0.18, 1.5, 0.18]} />
-        <meshLambertMaterial color={WOOD} />
+        <boxGeometry args={[0.16, 1.5, 0.16]} />
+        <meshStandardMaterial color={WOOD} roughness={0.85} />
+      </instancedMesh>
+      {/* зелёная крона виноградной лозы */}
+      <instancedMesh
+        ref={foliageRef}
+        args={[
+          undefined as unknown as THREE.BufferGeometry,
+          undefined as unknown as THREE.Material,
+          Math.max(1, columns.length),
+        ]}
+      >
+        <boxGeometry args={[3.4, 0.75, 0.55]} />
+        <meshStandardMaterial color={FOLIAGE} roughness={0.8} />
       </instancedMesh>
       {/* шпалера: горизонтальные перекладины по X */}
       {columns.map((c, i) => (
-        <mesh key={i} position={[c.x, 1.35, c.z]}>
-          <boxGeometry args={[3.6, 0.08, 0.08]} />
-          <meshLambertMaterial color={SOIL_DARK} />
+        <mesh key={i} position={[c.x, 1.48, c.z]}>
+          <boxGeometry args={[3.8, 0.05, 0.05]} />
+          <meshStandardMaterial color={TRELLIS_WIRE} roughness={0.7} />
         </mesh>
       ))}
     </group>
@@ -245,61 +293,100 @@ function ScenePost({
   const linkColor = position.status === 'offline' ? '#9A948A' : DATA_BLUE
 
   return (
-    <group position={[position.x, 0, position.y]} onClick={onSelect}>
-      {/* корпус ТОЧКА + антенна */}
-      <mesh position={[0, 0.55, 0]}>
-        <boxGeometry args={[0.9, 1.1, 0.7]} />
-        <meshLambertMaterial color="#4A4F55" />
+    <group
+      position={[position.x, 0, position.y]}
+      onClick={(e) => {
+        e.stopPropagation()
+        onSelect()
+      }}
+    >
+      {/* стойка поста */}
+      <mesh position={[0, 0.35, 0]}>
+        <cylinderGeometry args={[0.07, 0.09, 0.7]} />
+        <meshStandardMaterial color="#7F878E" metalness={0.35} roughness={0.45} />
       </mesh>
-      <mesh position={[0.3, 1.5, 0]}>
-        <cylinderGeometry args={[0.04, 0.04, 1]} />
-        <meshLambertMaterial color="#4A4F55" />
+      {/* светлый корпус ТОЧКА */}
+      <mesh position={[0, 0.95, 0]}>
+        <boxGeometry args={[0.85, 0.85, 0.65]} />
+        <meshStandardMaterial color={selected ? '#FFF9EB' : '#EAE5DA'} roughness={0.5} />
       </mesh>
-      {/* кольцо статуса */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
-        <ringGeometry args={[0.8, 1.15, 32]} />
+      {/* солнечная мини-панель сверху */}
+      <mesh position={[0, 1.43, 0]} rotation={[0.22, 0, 0]}>
+        <boxGeometry args={[0.78, 0.06, 0.56]} />
+        <meshStandardMaterial color="#2C4A6E" roughness={0.3} metalness={0.25} />
+      </mesh>
+      {/* антенна */}
+      <mesh position={[0.32, 1.75, -0.15]}>
+        <cylinderGeometry args={[0.035, 0.04, 0.9]} />
+        <meshStandardMaterial color="#4A4F55" roughness={0.4} />
+      </mesh>
+      {/* кольцо статуса на земле */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]}>
+        <ringGeometry args={[0.78, selected ? 1.25 : 1.08, 32]} />
         <meshBasicMaterial color={statusColor(position.status)} side={THREE.DoubleSide} />
       </mesh>
-      {/* линии связи к БС: пунктир, цвет по качеству (локальные координаты группы) */}
+      {/* линии связи к БС */}
       {bs.map(([x, y], i) => (
         <Line
           key={i}
           points={[
-            [0, 0.4, 0],
-            [x - position.x, 0.4, y - position.y],
+            [0, 1.8, 0],
+            [x - position.x, 2.2, y - position.y],
           ]}
           color={linkColor}
-          lineWidth={1.2}
+          lineWidth={selected ? 2 : 1.1}
           dashed
           dashScale={6}
         />
       ))}
-      {/* исполнители: значок у поста; вкл — пульс (масштаб анимацией) */}
+      {/* исполнители */}
       {act.map((a) => (
         <ActuatorBadge key={a.id} actuator={a} />
       ))}
-      {/* HTML-метка */}
-      <Html center position={[0, 2.4, 0]} style={{ pointerEvents: 'auto' }}>
-        <button
-          type="button"
-          className={selected ? `${sc.postLabel} ${sc.postLabelSelected}` : sc.postLabel}
-          onClick={onSelect}
-        >
-          <strong>
+      {/* HTML-метка: компактная пилюля по умолчанию, подробная карточка — только при выделении */}
+      <Html
+        center
+        position={[0, selected ? 2.85 : 2.35, 0]}
+        zIndexRange={selected ? [100, 0] : [10, 0]}
+        style={{ pointerEvents: 'auto' }}
+      >
+        {selected ? (
+          <button
+            type="button"
+            className={`${sc.postLabel} ${sc.postLabelSelected}`}
+            onClick={(e) => {
+              e.stopPropagation()
+              onSelect()
+            }}
+          >
+            <strong>
+              {position.name}
+              {alarm ? <span className={sc.alarmDot}>⚠</span> : null}
+            </strong>
+            {labels.map(({ tag, label }) => (
+              <span key={tag.tag_id} className={`${sc.postLabelValue} tabular`}>
+                <ValueText value={tag} precision={1} />{' '}
+                <span className={sc.postLabelName}>{label}</span>
+              </span>
+            ))}
+            <span className={`${sc.postLabelTime} tabular`}>
+              {ru.scene3d.measured}{' '}
+              {tag_ts(labels[0]?.tag ?? current.find((t) => t.post_id === position.postId))}
+            </span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            className={alarm ? `${sc.postPill} ${sc.postPillAlarm}` : sc.postPill}
+            onClick={(e) => {
+              e.stopPropagation()
+              onSelect()
+            }}
+          >
             {position.name}
             {alarm ? <span className={sc.alarmDot}>⚠</span> : null}
-          </strong>
-          {labels.map(({ tag, label }) => (
-            <span key={tag.tag_id} className={`${sc.postLabelValue} tabular`}>
-              <ValueText value={tag} precision={1} />{' '}
-              <span className={sc.postLabelName}>{label}</span>
-            </span>
-          ))}
-          <span className={`${sc.postLabelTime} tabular`}>
-            {ru.scene3d.measured}{' '}
-            {tag_ts(labels[0]?.tag ?? current.find((t) => t.post_id === position.postId))}
-          </span>
-        </button>
+          </button>
+        )}
       </Html>
     </group>
   )
@@ -324,9 +411,9 @@ function ActuatorBadge({ actuator }: { actuator: ActuatorT }) {
   })
   const color = on ? DATA_BLUE : actuator.fact_state === 'fault' ? '#C62828' : '#9A948A'
   return (
-    <mesh ref={ref} position={[1.4, 0.35, 0.6]}>
-      <sphereGeometry args={[0.35, 16, 16]} />
-      <meshLambertMaterial color={color} />
+    <mesh ref={ref} position={[1.25, 0.35, 0.55]}>
+      <sphereGeometry args={[0.32, 16, 16]} />
+      <meshStandardMaterial color={color} roughness={0.4} />
     </mesh>
   )
 }
