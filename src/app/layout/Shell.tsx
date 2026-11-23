@@ -13,10 +13,9 @@ import { TopBar } from './TopBar'
 import s from './shell.module.css'
 
 /*
- * Каркас приложения (05 §0): слева меню (десктоп) / снизу панель (телефон),
- * сверху шапка с выбором объекта, статусом связи, счётчиком тревог и выходом;
- * под шапкой — жёлтая полоса «нет связи» и красный баннер P1.
- * Здесь же стартует глобальный поллер /updates (02 §3).
+ * Каркас приложения (05 §0): сверху шапка на всю ширину страницы, под ней
+ * слева меню (десктоп) / снизу панель (телефон), жёлтая полоса «нет связи»
+ * и красный баннер P1. Здесь же стартует глобальный поллер /updates (02 §3).
  */
 export function Shell() {
   const location = useLocation()
@@ -56,17 +55,19 @@ export function Shell() {
 
   return (
     <div className={s.app}>
-      <SideNav />
-      <div className={s.main}>
-        <TopBar />
-        {offlineSince && (
-          <div className={s.offlineBanner} role="status">
-            {ru.shell.offlineBanner.replace('{time}', formatTimeRu(offlineSince))}
+      <TopBar />
+      <div className={s.body}>
+        <SideNav />
+        <div className={s.main}>
+          {offlineSince && (
+            <div className={s.offlineBanner} role="status">
+              {ru.shell.offlineBanner.replace('{time}', formatTimeRu(offlineSince))}
+            </div>
+          )}
+          <AlarmBanner />
+          <div className={s.content}>
+            <Outlet />
           </div>
-        )}
-        <AlarmBanner />
-        <div className={s.content}>
-          <Outlet />
         </div>
       </div>
       <BottomNav />

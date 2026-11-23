@@ -1,8 +1,15 @@
-/* Каркас приложения (T06): боковое меню ≥1024, нижняя панель <1024 (05 §0) */
+/* Каркас приложения (T06): шапка на всю ширину, под ней боковое меню ≥1024, нижняя панель <1024 (05 §0) */
 
 .app {
   display: flex;
+  flex-direction: column;
   min-height: 100dvh;
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
 }
 
 .sidenav {
@@ -90,15 +97,16 @@
   justify-content: center;
 }
 
-/* Шапка */
+/* Шапка на всю ширину (+25% по высоте: 70px) */
 .topbar {
+  width: 100%;
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-2) var(--space-4);
+  padding: var(--space-3) var(--space-4);
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border);
-  min-height: 56px;
+  min-height: 70px;
   flex-wrap: wrap;
 }
 
@@ -107,11 +115,11 @@
   align-items: center;
   text-decoration: none;
   flex: none;
-  margin-right: var(--space-1);
+  margin-right: var(--space-2);
 }
 
 .brandLogo {
-  height: 32px;
+  height: 40px;
   width: auto;
   display: block;
 }
