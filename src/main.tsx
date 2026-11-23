@@ -15,9 +15,11 @@ import '@/styles/global.css'
 installUnauthorizedRedirect(router)
 
 // PWA (T17): регистрация service worker кэша оболочки.
-// В dev плагин SW не отдаёт (devOptions off) — виртуальный модуль делает no-op;
-// воркер MSW остаётся единственным service worker в dev/e2e.
-registerSW({ immediate: true })
+// При включённом моке (dev/e2e/GitHub Pages демо) PWA SW не регистрируем,
+// чтобы воркер MSW оставался единственным service worker.
+if (import.meta.env.VITE_USE_MOCK !== 'true') {
+  registerSW({ immediate: true })
+}
 
 function render(): void {
   createRoot(document.getElementById('root')!).render(
@@ -46,7 +48,10 @@ async function enableMock(): Promise<void> {
   const { worker } = await import('@/mocks/browser')
   const { applyScenario, isScenario } = await import('@/mocks/scenarios')
   const { mountDebugPanel } = await import('@/mocks/mountDebugPanel')
-  await worker.start({ onUnhandledFrame: 'bypass' })
+  await worker.start({
+    serviceWorker: { url: `${import.meta.env.BASE_URL}mockServiceWorker.js` },
+    onUnhandledFrame: 'bypass',
+  })
 
   let stored: string | null = null
   try {
