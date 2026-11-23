@@ -334,13 +334,24 @@
 
 .tableSort {
   font: inherit;
+  font-size: var(--font-size-md);
   font-weight: var(--font-weight-heading);
-  background: none;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: transparent;
   border: none;
+  box-shadow: none;
   color: var(--text-primary);
   cursor: pointer;
   padding: var(--space-1) 0;
   min-height: var(--touch-min);
+}
+
+.tableSort:hover,
+.tableSort:active {
+  box-shadow: none;
+  transform: none;
+  color: var(--brand-olive-dark);
 }
 
 .tableEmpty {
