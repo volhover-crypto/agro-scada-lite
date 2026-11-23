@@ -538,7 +538,7 @@ export function buildSeed(): Seed {
           {
             id: 'w3',
             kind: 'chart',
-            title: 'Клиника за сутки',
+            title: 'Климат за сутки',
             tags: [tAirP1, rhP1],
             grid: { x: 0, y: 2, w: 6, h: 3 },
           },
