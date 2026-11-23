@@ -58,10 +58,18 @@ export function ObjectScene3D({
 }: Scene3DProps) {
   const positions = useMemo(() => scenePositions(posts), [posts])
   const scale = useMemo(() => sceneScale(positions), [positions])
-  const bs = useMemo(() => baseStationPoints(positions), [positions])
+  const scaled = useMemo(
+    () => positions.map((p) => ({ ...p, x: p.x * scale, y: p.y * scale })),
+    [positions, scale],
+  )
+  const bs = useMemo(() => baseStationPoints(scaled), [scaled])
+  const center = useMemo<[number, number]>(() => {
+    if (scaled.length === 0) return [0, 0]
+    const xs = scaled.map((p) => p.x)
+    const ys = scaled.map((p) => p.y)
+    return [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2]
+  }, [scaled])
   const controlsRef = useRef<React.ComponentRef<typeof OrbitControls> | null>(null)
-
-  const scaled = positions.map((p) => ({ ...p, x: p.x * scale, y: p.y * scale }))
 
   function resetView() {
     controlsRef.current?.reset()
@@ -72,12 +80,21 @@ export function ObjectScene3D({
       <button type="button" className={sc.resetBtn} onClick={resetView}>
         {ru.scene3d.reset}
       </button>
-      <Canvas orthographic camera={{ position: [18, 18, 18], zoom: 28, near: 0.1, far: 200 }}>
+      <Canvas
+        orthographic
+        camera={{
+          position: [center[0] + 24, 24, center[1] + 24],
+          zoom: 12,
+          near: 0.1,
+          far: 200,
+        }}
+      >
         <color attach="background" args={['#EFE6D6']} />
         <ambientLight intensity={1.1} />
         <directionalLight position={[10, 20, 10]} intensity={0.8} />
         <OrbitControls
           ref={controlsRef}
+          target={[center[0], 0, center[1]]}
           enableZoom
           minAzimuthAngle={-Math.PI / 4}
           maxAzimuthAngle={Math.PI / 4}
@@ -85,8 +102,10 @@ export function ObjectScene3D({
           maxPolarAngle={Math.PI / 2.6}
         />
         <Ground
-          scaledX={Math.max(...scaled.map((p) => p.x), 12) + 8}
-          scaledY={Math.max(...scaled.map((p) => p.y), 8) + 8}
+          cx={center[0]}
+          cz={center[1]}
+          sizeX={Math.max(24, ...scaled.map((p) => Math.abs(p.x - center[0]) * 2)) + 24}
+          sizeY={Math.max(16, ...scaled.map((p) => Math.abs(p.y - center[1]) * 2)) + 24}
         />
         <CropRows objectType={objectType} positions={scaled} />
         {bs.map(([x, y], i) => (
@@ -99,7 +118,7 @@ export function ObjectScene3D({
               <cylinderGeometry args={[0.06, 0.06, 1.4]} />
               <meshLambertMaterial color="#4A4F55" />
             </mesh>
-            <Html center distanceFactor={14} position={[0, 2.4, 0]}>
+            <Html center position={[0, 2.4, 0]}>
               <span className={sc.bsLabel}>БС-{i + 1}</span>
             </Html>
           </group>
@@ -111,7 +130,7 @@ export function ObjectScene3D({
             current={current}
             actuators={actuators}
             alarms={alarms}
-            bs={bs.map(([x, y]) => [x * scale, y * scale] as [number, number])}
+            bs={bs}
             selected={selectedPostId === p.postId}
             onSelect={() => onSelectPost(p.postId)}
           />
@@ -122,14 +141,20 @@ export function ObjectScene3D({
   )
 }
 
-function Ground({ scaledX, scaledY }: { scaledX: number; scaledY: number }) {
+function Ground({
+  cx,
+  cz,
+  sizeX,
+  sizeY,
+}: {
+  cx: number
+  cz: number
+  sizeX: number
+  sizeY: number
+}) {
   return (
-    <mesh
-      rotation={[-Math.PI / 2, 0, 0]}
-      position={[scaledX / 4, 0, scaledY / 4]}
-      receiveShadow={false}
-    >
-      <planeGeometry args={[scaledX + 16, scaledY + 16]} />
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[cx, 0, cz]} receiveShadow={false}>
+      <planeGeometry args={[sizeX, sizeY]} />
       <meshLambertMaterial color={SOIL_LIGHT} />
     </mesh>
   )
@@ -235,13 +260,13 @@ function ScenePost({
         <ringGeometry args={[0.8, 1.15, 32]} />
         <meshBasicMaterial color={statusColor(position.status)} side={THREE.DoubleSide} />
       </mesh>
-      {/* линии связи к БС: пунктир, цвет по качеству */}
+      {/* линии связи к БС: пунктир, цвет по качеству (локальные координаты группы) */}
       {bs.map(([x, y], i) => (
         <Line
           key={i}
           points={[
-            [position.x, 0.4, position.y],
-            [x, 0.4, y],
+            [0, 0.4, 0],
+            [x - position.x, 0.4, y - position.y],
           ]}
           color={linkColor}
           lineWidth={1.2}
@@ -254,7 +279,7 @@ function ScenePost({
         <ActuatorBadge key={a.id} actuator={a} />
       ))}
       {/* HTML-метка */}
-      <Html center distanceFactor={16} position={[0, 2.4, 0]} style={{ pointerEvents: 'auto' }}>
+      <Html center position={[0, 2.4, 0]} style={{ pointerEvents: 'auto' }}>
         <button
           type="button"
           className={selected ? `${sc.postLabel} ${sc.postLabelSelected}` : sc.postLabel}
