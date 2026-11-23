@@ -1,6 +1,23 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 40" role="img" aria-label="AgroЭЛЕМЕНТ (заглушка)">
-  <!-- Заглушка логотипа: знак + текст; заменить файлом владельца (06 §1) -->
-  <circle cx="20" cy="20" r="15" fill="#7A8B3A"/>
-  <path d="M20 10c-4.5 2.7-6.3 6.3-6.3 9.9a6.3 6.3 0 0 0 12.6 0C26.3 16.3 24.5 12.7 20 10z" fill="#FAF6EE"/>
-  <text x="44" y="26" font-family="Inter, system-ui, sans-serif" font-size="19" font-weight="600" fill="#3A3A38">AgroЭЛЕМЕНТ</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 364 76" role="img" aria-label="АгроЭЛЕМЕНТ">
+  <defs>
+    <mask id="ae-sq-mask">
+      <rect width="364" height="76" fill="#ffffff"/>
+      <circle cx="38" cy="38" r="40" fill="#000000"/>
+    </mask>
+  </defs>
+  <rect x="52" y="12" width="48" height="52" fill="#524F4A" mask="url(#ae-sq-mask)"/>
+  <circle cx="38" cy="38" r="36" fill="#8B9A46"/>
+  <g stroke="#FFFFFF" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round" fill="none">
+    <path d="M68 57 C67 47 59 42 51 42 C53 50 59 55 67 57 Z"/>
+    <path d="M69 57 C70 50 76 46 82 46 C80 53 75 56 69 57 Z"/>
+    <path d="M68 56 C68 63 67 68 64 71 M68 56 C68 63 69 68 72 71"/>
+  </g>
+  <g fill="#0095D9">
+    <path d="M68 57 C67 47 59 42 51 42 C53 50 59 55 67 57 Z"/>
+    <path d="M69 57 C70 50 76 46 82 46 C80 53 75 56 69 57 Z"/>
+    <path d="M66.5 55 H69.5 V65 C69.5 67.5 71 69.5 73 70.8 L71.2 72.2 C69.5 71 68.5 69.5 68 68 C67.5 69.5 66.5 71 64.8 72.2 L63 70.8 C65 69.5 66.5 67.5 66.5 65 Z"/>
+  </g>
+  <text x="108" y="60" font-family="'Segoe UI', Calibri, Inter, system-ui, sans-serif" font-size="42" font-weight="700" letter-spacing="-0.4">
+    <tspan fill="#8B9A46">Агро</tspan><tspan fill="#524F4A">ЭЛЕМЕНТ</tspan>
+  </text>
 </svg>

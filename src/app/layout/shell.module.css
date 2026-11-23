@@ -102,6 +102,20 @@
   flex-wrap: wrap;
 }
 
+.brandLink {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  flex: none;
+  margin-right: var(--space-1);
+}
+
+.brandLogo {
+  height: 32px;
+  width: auto;
+  display: block;
+}
+
 .objectSelect {
   font: inherit;
   min-height: var(--touch-min);

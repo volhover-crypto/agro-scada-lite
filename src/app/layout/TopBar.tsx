@@ -3,13 +3,14 @@ import { logout } from '@/api/endpoints/auth'
 import { useAlarms } from '@/api/endpoints/alarms'
 import { useModems } from '@/api/endpoints/modems'
 import { useObjects } from '@/api/endpoints/objects'
+import logo from '@/assets/brand/logo.svg'
 import { queryClient } from '@/api/queryClient'
 import { ru } from '@/i18n/ru'
 import { getSessionUser } from '@/state/session'
 import { useUiStore } from '@/state/ui'
 import s from './shell.module.css'
 
-/** Шапка (05 §0): выбор объекта, статус связи (агрегат по модемам до BR-FE-1),
+/** Шапка (05 §0): логотип, выбор объекта, статус связи (агрегат по модемам до BR-FE-1),
  *  счётчик тревог, метка «ТЕСТ» (BR-FE-6), пользователь и выход */
 export function TopBar() {
   const navigate = useNavigate()
@@ -47,6 +48,10 @@ export function TopBar() {
 
   return (
     <header className={s.topbar}>
+      <Link to="/" className={s.brandLink} aria-label="АгроЭЛЕМЕНТ">
+        <img className={s.brandLogo} src={logo} alt="АгроЭЛЕМЕНТ" />
+      </Link>
+
       <select
         className={s.objectSelect}
         aria-label={ru.shell.navObjects}
