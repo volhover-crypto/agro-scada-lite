@@ -39,6 +39,28 @@ p {
   margin: 0;
 }
 
+/* Глобальные тени и тактильный отклик для кнопок */
+button {
+  box-shadow: var(--shadow-btn);
+  transition:
+    box-shadow var(--motion-fast) var(--ease-out),
+    transform var(--motion-fast) var(--ease-out);
+}
+
+button:hover:not(:disabled) {
+  box-shadow: var(--shadow-btn-hover);
+  transform: translateY(-1px);
+}
+
+button:active:not(:disabled) {
+  box-shadow: var(--shadow-btn-active);
+  transform: translateY(0);
+}
+
+button:disabled {
+  box-shadow: none;
+}
+
 /* Числовые значения (показания датчиков, время): одинаковая ширина цифр (06 §3) */
 .tabular {
   font-variant-numeric: tabular-nums;

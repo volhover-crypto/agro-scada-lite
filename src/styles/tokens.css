@@ -20,7 +20,10 @@
 
   /* Рамки и тени (06 §2) */
   --border: #d8ccb6;
-  --shadow-card: 0 4px 14px rgba(60, 50, 30, 0.12);
+  --shadow-card: 0 10px 26px rgba(46, 38, 22, 0.16), 0 3px 8px rgba(46, 38, 22, 0.1);
+  --shadow-btn: 0 3px 8px rgba(46, 38, 22, 0.14), 0 1px 2px rgba(46, 38, 22, 0.1);
+  --shadow-btn-hover: 0 6px 14px rgba(46, 38, 22, 0.2), 0 2px 4px rgba(46, 38, 22, 0.12);
+  --shadow-btn-active: 0 1px 3px rgba(46, 38, 22, 0.14);
 
   /* Статусы данных (06 §2): good — обычный текст, отдельной переменной не нуждается */
   --quality-stale: #9a948a;
