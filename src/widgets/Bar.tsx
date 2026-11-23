@@ -20,6 +20,7 @@ export interface BarWidgetProps {
 }
 
 const DAY_MS = 86_400_000
+const BAR_COLORS = ['#2F7FD8', '#6B8E23', '#D97706', '#0D9488']
 
 /** Дневные суммы/средние по точкам (для осадков — сумма за сутки) */
 export function dailyBars(
@@ -79,17 +80,44 @@ function BarBody({
   const option = useMemo<EChartsCoreOption>(
     () => ({
       animationDuration: 250,
-      grid: { left: 48, right: 16, top: 36, bottom: 28 },
-      legend: { top: 0, type: 'scroll', textStyle: { color: '#3A3A38' } },
-      tooltip: { trigger: 'axis' },
-      xAxis: { type: 'time', axisLabel: { hideOverlap: true } },
-      yAxis: { type: 'value' },
+      color: BAR_COLORS,
+      grid: { left: 12, right: 12, top: 38, bottom: 8, containLabel: true },
+      legend: {
+        top: 0,
+        type: 'scroll',
+        icon: 'roundRect',
+        itemWidth: 12,
+        itemHeight: 8,
+        textStyle: { color: '#3A3A38', fontSize: 12 },
+      },
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' },
+        backgroundColor: 'rgba(255, 253, 249, 0.96)',
+        borderColor: '#DDD5C7',
+        textStyle: { color: '#262624', fontSize: 12 },
+      },
+      xAxis: {
+        type: 'time',
+        axisLine: { lineStyle: { color: '#D6CEC0' } },
+        axisTick: { show: false },
+        axisLabel: { color: '#6E6A63', fontSize: 11, hideOverlap: true },
+      },
+      yAxis: {
+        type: 'value',
+        splitNumber: 4,
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: { color: '#6E6A63', fontSize: 11 },
+        splitLine: { lineStyle: { color: '#EAE2D3', type: 'dashed' as const } },
+      },
       series: (
         hist as never as Array<{ tag_id?: string; points?: Array<[string, number, string]> }>
       ).map((sr) => ({
         name: names.get(sr.tag_id ?? '') ?? sr.tag_id ?? '',
         type: 'bar' as const,
         barMaxWidth: 28,
+        itemStyle: { borderRadius: [6, 6, 0, 0] },
         data: toXY2(dailyBars(sr.points ?? [])),
       })),
     }),
@@ -97,5 +125,5 @@ function BarBody({
     [hist, current],
   )
 
-  return <EChartCanvas option={option} height={240} />
+  return <EChartCanvas option={option} />
 }

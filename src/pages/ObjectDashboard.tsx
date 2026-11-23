@@ -129,10 +129,10 @@ function useIsMobile(): boolean {
 
 function gridFrame(config: WidgetConfig, editing: boolean, onRemove: () => void): ReactNode {
   return (
-    <div key={config.id} data-grid={config.grid} className={d.cell}>
-      <div className={d.cellHead}>
-        <span className={d.cellTitle}>{config.title ?? config.kind}</span>
-        {editing && (
+    <div key={config.id} data-grid={config.grid} className={editing ? d.cellEditing : d.cell}>
+      {editing && (
+        <div className={d.cellHead}>
+          <span className={d.cellTitle}>{config.title ?? config.kind}</span>
           <button
             type="button"
             className={d.cellRemove}
@@ -141,8 +141,8 @@ function gridFrame(config: WidgetConfig, editing: boolean, onRemove: () => void)
           >
             ×
           </button>
-        )}
-      </div>
+        </div>
+      )}
       <WidgetById config={config} />
     </div>
   )
@@ -218,7 +218,7 @@ export function DashboardView({ layout, tagCatalog, onSave, saving }: DashboardV
           className={d.grid}
           breakpoints={{ lg: 1280, md: 768, sm: 0 }}
           cols={{ lg: 12, md: 6, sm: 1 }}
-          rowHeight={56}
+          rowHeight={76}
           margin={[12, 12]}
           layouts={{
             lg: stacked.map((w) => ({ ...w.grid, i: w.id })),
@@ -260,7 +260,7 @@ export function DashboardView({ layout, tagCatalog, onSave, saving }: DashboardV
         className={d.grid}
         breakpoints={{ lg: 1280, md: 768, sm: 0 }}
         cols={{ lg: 12, md: 6, sm: 1 }}
-        rowHeight={56}
+        rowHeight={76}
         margin={[12, 12]}
         layouts={{
           lg: stacked.map((w) => ({ ...w.grid, i: w.id })),

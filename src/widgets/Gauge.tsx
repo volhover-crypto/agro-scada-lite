@@ -17,7 +17,7 @@ type TagValueT = components['schemas']['TagValue']
 const CX = 60
 const CY = 60
 const R_ZONE = 48
-const NEEDLE_LEN = 40
+const NEEDLE_LEN = 38
 
 /** Угол стрелки −90…+90; null или вне диапазона — у упора */
 export function gaugeAngle(value: number | null, min: number, max: number): number {
@@ -35,7 +35,8 @@ function polar(deg: number, r: number): { x: number; y: number } {
 function arcPath(fromDeg: number, toDeg: number, r: number): string {
   const a = polar(fromDeg, r)
   const b = polar(toDeg, r)
-  return `M ${a.x.toFixed(2)} ${a.y.toFixed(2)} A ${r} ${r} 0 0 1 ${b.x.toFixed(2)} ${b.y.toFixed(2)}`
+  const largeArc = Math.abs(toDeg - fromDeg) > 180 ? 1 : 0
+  return `M ${a.x.toFixed(2)} ${a.y.toFixed(2)} A ${r} ${r} 0 ${largeArc} 1 ${b.x.toFixed(2)} ${b.y.toFixed(2)}`
 }
 
 /** Цвет зоны для значения: thresholds = «ниже value → color», иначе ok */
@@ -61,7 +62,7 @@ export function zoneArcs(
 ): Array<[number, number, string]> {
   const bounds = [
     min,
-    ...[...thresholds].sort((a, b) => b.value - a.value).map((t) => t.value),
+    ...[...thresholds].sort((a, b) => a.value - b.value).map((t) => t.value),
     max,
   ]
   const arcs: Array<[number, number, string]> = []
@@ -130,12 +131,18 @@ function GaugeBody({
           d={arcPath(-90, 90, R_ZONE)}
           fill="none"
           stroke="var(--bg-sunken)"
-          strokeWidth="8"
+          strokeWidth="10"
           strokeLinecap="round"
         />
-        {/* зоны */}
+        {/* зоны (перевод значений min..max в градусы −90..+90) */}
         {zoneArcs(min, max, thresholds).map(([a0, a1, color], i) => (
-          <path key={i} d={arcPath(a0, a1, R_ZONE)} fill="none" stroke={color} strokeWidth="8" />
+          <path
+            key={i}
+            d={arcPath(gaugeAngle(a0, min, max), gaugeAngle(a1, min, max), R_ZONE)}
+            fill="none"
+            stroke={color}
+            strokeWidth="10"
+          />
         ))}
         {/* стрелка */}
         <g
@@ -152,9 +159,9 @@ function GaugeBody({
             strokeLinecap="round"
           />
         </g>
-        <circle cx={CX} cy={CY} r="4" fill="var(--text-primary)" />
+        <circle cx={CX} cy={CY} r="4.5" fill="var(--text-primary)" />
       </svg>
-      <ValueText value={value} precision={2} className={s.gaugeValue} />
+      <ValueText value={value} precision={1} className={s.gaugeValue} />
       <span className="visually-hidden">{label}</span>
     </div>
   )

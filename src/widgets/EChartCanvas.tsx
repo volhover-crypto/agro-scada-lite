@@ -32,10 +32,10 @@ echarts.use([
  */
 export function EChartCanvas({
   option,
-  height = 320,
+  height = '100%',
 }: {
   option: EChartsCoreOption
-  height?: number
+  height?: number | string
 }) {
   const hostRef = useRef<HTMLDivElement | null>(null)
 
@@ -74,5 +74,12 @@ export function EChartCanvas({
     }
   }, [option])
 
-  return <div ref={hostRef} style={{ width: '100%', height }} role="img" aria-label="График" />
+  return (
+    <div
+      ref={hostRef}
+      style={{ width: '100%', height, minHeight: 180, flex: 1 }}
+      role="img"
+      aria-label="График"
+    />
+  )
 }
