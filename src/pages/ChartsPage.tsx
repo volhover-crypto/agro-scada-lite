@@ -171,27 +171,6 @@ export function ChartsPage() {
           Сохранить вид
         </button>
         {saved && <span className={s.savedNote}>Вид сохранён</span>}
-      </div>
-
-      <div className={s.chips}>
-        {selected.map((t) => (
-          <span key={t} className={s.chip}>
-            {nameOf(current ?? [], t)}
-            <button
-              type="button"
-              className={s.chipBtn}
-              aria-label={`Убрать ${t}`}
-              onClick={() => toggle(t)}
-            >
-              ×
-            </button>
-          </span>
-        ))}
-        {selected.length > 0 && (
-          <span className={s.chipsLimit}>
-            {selected.length}/{MAX_SERIES}
-          </span>
-        )}
         {limitHit && (
           <span className={s.chipsLimit}>
             {ru.charts.maxSeries.replace('{max}', String(MAX_SERIES))}
@@ -238,7 +217,7 @@ export function ChartsPage() {
             agg={agg}
             title={selected.length ? undefined : ru.charts.emptyHint}
           />
-          {selected.length > 0 && <TableWidget tags={selected} />}
+          {selected.length > 0 && <TableWidget tags={selected} onRemove={toggle} />}
         </div>
       </div>
     </main>
@@ -307,8 +286,4 @@ export function filterTree(tree: TreeGroup[], search: string): TreeGroup[] {
       ),
     }))
     .filter((g) => g.params.length > 0)
-}
-
-function nameOf(current: TagValueT[], tagId: string): string {
-  return current.find((v) => v.tag_id === tagId)?.name ?? tagId
 }

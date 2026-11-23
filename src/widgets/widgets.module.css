@@ -306,6 +306,32 @@
   padding: var(--space-2);
 }
 
+.tableRemoveCol {
+  width: 36px;
+  padding: var(--space-1) !important;
+  text-align: center;
+}
+
+.tableRemoveBtn {
+  border: none;
+  background: none;
+  box-shadow: none;
+  cursor: pointer;
+  color: var(--alarm-p1);
+  font-size: var(--font-size-md);
+  line-height: 1;
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: var(--radius-btn);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tableRemoveBtn:hover {
+  background: var(--bg-sunken);
+}
+
 .tableSort {
   font: inherit;
   font-weight: var(--font-weight-heading);

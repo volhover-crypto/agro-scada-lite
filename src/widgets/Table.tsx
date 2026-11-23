@@ -62,7 +62,15 @@ export function sortRows(
   })
 }
 
-export function TableWidget({ title, tags }: { title?: string; tags: string[] }) {
+export function TableWidget({
+  title,
+  tags,
+  onRemove,
+}: {
+  title?: string
+  tags: string[]
+  onRemove?: (tagId: string) => void
+}) {
   const [sortKey, setSortKey] = useState<SortKey>('time')
   const [dir, setDir] = useState<'asc' | 'desc'>('desc')
   const [postFilter, setPostFilter] = useState<number | 'all'>('all')
@@ -86,6 +94,7 @@ export function TableWidget({ title, tags }: { title?: string; tags: string[] })
           }}
           onPostFilter={setPostFilter}
           onSearch={setSearch}
+          onRemove={onRemove}
         />
       )}
     </WidgetFrame>
@@ -101,6 +110,7 @@ function TableBody({
   onSort,
   onPostFilter,
   onSearch,
+  onRemove,
 }: {
   values: TagValueT[]
   sortKey: SortKey
@@ -110,6 +120,7 @@ function TableBody({
   onSort: (k: SortKey) => void
   onPostFilter: (v: number | 'all') => void
   onSearch: (v: string) => void
+  onRemove?: (tagId: string) => void
 }) {
   const posts = useMemo(() => {
     const m = new Map<number, string>()
@@ -172,6 +183,7 @@ function TableBody({
       <table className={s.table}>
         <thead>
           <tr>
+            {onRemove && <th className={s.tableRemoveCol} aria-label="Убрать с графика" />}
             {head.map(([k, label]) => (
               <th key={k}>
                 <button type="button" className={s.tableSort} onClick={() => onSort(k)}>
@@ -185,6 +197,19 @@ function TableBody({
         <tbody>
           {rows.map((v) => (
             <tr key={v.tag_id}>
+              {onRemove && (
+                <td className={s.tableRemoveCol}>
+                  <button
+                    type="button"
+                    className={s.tableRemoveBtn}
+                    aria-label={`Убрать ${v.name ?? v.tag_id}`}
+                    title="Убрать с графика"
+                    onClick={() => v.tag_id && onRemove(v.tag_id)}
+                  >
+                    ×
+                  </button>
+                </td>
+              )}
               <td>{v.post_id != null ? (posts.get(v.post_id) ?? `Пост ${v.post_id}`) : '—'}</td>
               <td>{v.name}</td>
               <td
@@ -201,7 +226,7 @@ function TableBody({
           ))}
           {rows.length === 0 && (
             <tr>
-              <td colSpan={5} className={s.tableEmpty}>
+              <td colSpan={onRemove ? 6 : 5} className={s.tableEmpty}>
                 {ru.widgets.noData}
               </td>
             </tr>
