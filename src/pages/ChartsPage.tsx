@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import type { components } from '@/api/types.gen'
 import { api } from '@/api/client'
@@ -13,11 +13,14 @@ import s from '@/widgets/widgets.module.css'
 /*
  * Графики (05 §7): выбор тегов (дерево Объект → Пост → Параметр, поиск), до 8;
  * календарь выбора периода + компактные пресеты 24 ч / 7 дн / 30 дн сбоку;
- * агрегация; «Сохранить вид» — в dashboards выбранного объекта ([ASSUMPTION] В6).
+ * агрегация; «Сохранить вид» — в dashboards выбранного объекта ([ASSUMPTION] В6);
+ * режим модального окна для графика (перетаскивание, масштабирование за угол,
+ * кнопки в стиле Проводника Windows: свернуть / развернуть / закрыть).
  */
 
 type ChannelT = components['schemas']['Channel']
 type TagValueT = components['schemas']['TagValue']
+type WindowMode = 'inline' | 'modal' | 'maximized'
 
 const PERIODS: Array<[Period, string, number]> = [
   ['24h', '24 ч', 1],
@@ -38,6 +41,19 @@ function presetDates(days: number): { from: string; to: string } {
   return { from: toDateInput(from), to: toDateInput(to) }
 }
 
+function defaultModalBox() {
+  const vw = typeof window !== 'undefined' ? window.innerWidth : 1280
+  const vh = typeof window !== 'undefined' ? window.innerHeight : 800
+  const w = Math.min(Math.round(vw * 0.78), 1120)
+  const h = Math.min(Math.round(vh * 0.72), 680)
+  return {
+    x: Math.max(16, Math.round((vw - w) / 2)),
+    y: Math.max(16, Math.round((vh - h) / 2)),
+    w,
+    h,
+  }
+}
+
 export function ChartsPage() {
   const [selected, setSelected] = useState<string[]>([])
   const [period, setPeriod] = useState<Period | null>('24h')
@@ -46,6 +62,15 @@ export function ChartsPage() {
   const [search, setSearch] = useState('')
   const [limitHit, setLimitHit] = useState(false)
   const [saved, setSaved] = useState(false)
+
+  const [windowMode, setWindowMode] = useState<WindowMode>('inline')
+  const [modalBox, setModalBox] = useState(defaultModalBox)
+  const dragRef = useRef<{
+    kind: 'move' | 'resize'
+    startX: number
+    startY: number
+    box: { x: number; y: number; w: number; h: number }
+  } | null>(null)
 
   const { data: objects } = useObjects()
   const { data: channels } = useQueryChannels()
@@ -63,6 +88,61 @@ export function ChartsPage() {
     const toIso = new Date(`${dateRange.to}T23:59:59`).toISOString()
     return { from: fromIso, to: toIso }
   }, [period, dateRange])
+
+  useEffect(() => {
+    if (windowMode === 'inline') return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setWindowMode('inline')
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [windowMode])
+
+  useEffect(() => {
+    function onMove(e: PointerEvent) {
+      const d = dragRef.current
+      if (!d) return
+      const dx = e.clientX - d.startX
+      const dy = e.clientY - d.startY
+      if (d.kind === 'move') {
+        const maxX = Math.max(0, window.innerWidth - 120)
+        const maxY = Math.max(0, window.innerHeight - 60)
+        setModalBox({
+          ...d.box,
+          x: Math.min(maxX, Math.max(0, d.box.x + dx)),
+          y: Math.min(maxY, Math.max(0, d.box.y + dy)),
+        })
+      } else {
+        const maxW = window.innerWidth - d.box.x - 8
+        const maxH = window.innerHeight - d.box.y - 8
+        setModalBox({
+          ...d.box,
+          w: Math.min(maxW, Math.max(460, d.box.w + dx)),
+          h: Math.min(maxH, Math.max(300, d.box.h + dy)),
+        })
+      }
+    }
+    function onUp() {
+      dragRef.current = null
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+    }
+  }, [])
+
+  function startDrag(kind: 'move' | 'resize', e: ReactPointerEvent) {
+    if (windowMode !== 'modal') return
+    e.preventDefault()
+    dragRef.current = { kind, startX: e.clientX, startY: e.clientY, box: modalBox }
+  }
+
+  function openModal() {
+    setModalBox(defaultModalBox())
+    setWindowMode('modal')
+  }
 
   const save = useMutation({
     mutationFn: () =>
@@ -101,6 +181,16 @@ export function ChartsPage() {
       setLimitHit(true)
     }
   }
+
+  const chartElement = (
+    <ChartWidget
+      tags={selected}
+      period={period ?? '7d'}
+      customRange={customRange}
+      agg={agg}
+      title={selected.length ? undefined : ru.charts.emptyHint}
+    />
+  )
 
   return (
     <main className={s.chartsPage}>
@@ -170,6 +260,16 @@ export function ChartsPage() {
         >
           Сохранить вид
         </button>
+
+        <button
+          type="button"
+          className={s.presetBtn}
+          title="Открыть график в отдельном окне"
+          onClick={openModal}
+        >
+          ❐ В окне
+        </button>
+
         {saved && <span className={s.savedNote}>Вид сохранён</span>}
         {limitHit && (
           <span className={s.chipsLimit}>
@@ -210,16 +310,89 @@ export function ChartsPage() {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-          <ChartWidget
-            tags={selected}
-            period={period ?? '7d'}
-            customRange={customRange}
-            agg={agg}
-            title={selected.length ? undefined : ru.charts.emptyHint}
-          />
+          {windowMode === 'inline' && chartElement}
           {selected.length > 0 && <TableWidget tags={selected} onRemove={toggle} />}
         </div>
       </div>
+
+      {windowMode !== 'inline' && (
+        <div className={s.chartModalBackdrop} role="dialog" aria-modal="true" aria-label="Окно графиков">
+          <div
+            className={
+              windowMode === 'maximized'
+                ? `${s.chartModalWindow} ${s.chartModalMaximized}`
+                : s.chartModalWindow
+            }
+            style={
+              windowMode === 'modal'
+                ? {
+                    left: `${modalBox.x}px`,
+                    top: `${modalBox.y}px`,
+                    width: `${modalBox.w}px`,
+                    height: `${modalBox.h}px`,
+                  }
+                : undefined
+            }
+          >
+            <div
+              className={s.winTitleBar}
+              onPointerDown={(e) => startDrag('move', e)}
+              onDoubleClick={() =>
+                setWindowMode((m) => (m === 'maximized' ? 'modal' : 'maximized'))
+              }
+            >
+              <span className={s.winTitle}>
+                {ru.shell.navCharts}
+                {selected.length > 0 ? ` (${selected.length})` : ''}
+              </span>
+              <div
+                className={s.winControls}
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                <button
+                  type="button"
+                  className={s.winBtn}
+                  title="Свернуть"
+                  aria-label="Свернуть окно"
+                  onClick={() => setWindowMode('inline')}
+                >
+                  —
+                </button>
+                <button
+                  type="button"
+                  className={s.winBtn}
+                  title={windowMode === 'maximized' ? 'Восстановить размер' : 'Развернуть на весь экран'}
+                  aria-label={windowMode === 'maximized' ? 'Восстановить размер' : 'Развернуть на весь экран'}
+                  onClick={() =>
+                    setWindowMode((m) => (m === 'maximized' ? 'modal' : 'maximized'))
+                  }
+                >
+                  {windowMode === 'maximized' ? '❐' : '☐'}
+                </button>
+                <button
+                  type="button"
+                  className={`${s.winBtn} ${s.winBtnClose}`}
+                  title="Закрыть"
+                  aria-label="Закрыть окно"
+                  onClick={() => setWindowMode('inline')}
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            <div className={s.chartModalBody}>{chartElement}</div>
+
+            {windowMode === 'modal' && (
+              <div
+                className={s.winResizeHandle}
+                title="Изменить размер"
+                onPointerDown={(e) => startDrag('resize', e)}
+              />
+            )}
+          </div>
+        </div>
+      )}
     </main>
   )
 }
