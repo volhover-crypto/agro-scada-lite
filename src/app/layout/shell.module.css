@@ -6,14 +6,24 @@
 }
 
 .sidenav {
-  width: 224px;
+  width: 232px;
   flex: none;
   background: var(--bg-surface);
   border-right: 1px solid var(--border);
-  padding: var(--space-4) var(--space-2);
+  padding: var(--space-3) var(--space-2);
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-3);
+}
+
+.navGroup {
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: var(--space-1);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .main {
@@ -40,17 +50,29 @@
   border-radius: var(--radius-btn);
   color: var(--text-primary);
   text-decoration: none;
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-heading);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .navLink:hover {
-  background: var(--bg-sunken);
+  background: var(--bg-surface);
 }
 
 .navLinkActive {
   background: var(--brand-olive);
   color: var(--bg-surface);
   font-weight: var(--font-weight-heading);
+}
+
+.navLinkActive:hover {
+  background: var(--brand-olive);
+}
+
+.navIcon {
+  flex: none;
+  opacity: 0.88;
 }
 
 .navBadge {
