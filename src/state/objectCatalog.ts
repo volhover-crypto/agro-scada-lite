@@ -11,14 +11,24 @@ export type ObjectTypeCode =
 
 export type RegistryStatus = 'draft' | 'active' | 'archived'
 
+/** Произвольное текстовое свойство шаблона (в стиле 1С — всё хранится текстом) */
 export interface TemplatePropertyDef {
   key: string
   label: string
-  unit?: string
+  defaultValue?: string
+}
+
+/** Папка (группа) в иерархическом справочнике шаблонов */
+export interface TemplateGroup {
+  id: string
+  parentId: string | null
+  name: string
+  scope: 'system' | 'custom'
 }
 
 export interface ObjectTemplate {
   id: string
+  groupId: string | null
   name: string
   object_type: ObjectTypeCode
   description: string
@@ -45,72 +55,84 @@ export interface CustomObjectRecord {
   tz: string
 }
 
+export const SYSTEM_GROUPS: TemplateGroup[] = [
+  { id: 'grp-agro', parentId: null, name: 'Агроучастки', scope: 'system' },
+  { id: 'grp-infra', parentId: null, name: 'Инженерные узлы', scope: 'system' },
+]
+
 export const SYSTEM_TEMPLATES: ObjectTemplate[] = [
   {
     id: 'tpl-vineyard',
+    groupId: 'grp-agro',
     name: 'Виноградник',
     object_type: 'vineyard',
-    description: 'Участок виноградника с контролем микроклимата, влажности почвы по горизонтам и полива.',
+    description: 'Участок виноградника с контролем микроклимата, влажности почвы и полива.',
     scope: 'system',
     properties: [
-      { key: 'area_ha', label: 'Площадь', unit: 'га' },
-      { key: 'variety', label: 'Сорт' },
-      { key: 'irrigation', label: 'Тип полива' },
-    ],
-  },
-  {
-    id: 'tpl-pump',
-    name: 'Насосная станция',
-    object_type: 'pump_station',
-    description: 'Узел подачи воды с контролем давления, расхода и управлением насосами/клапанами.',
-    scope: 'system',
-    properties: [
-      { key: 'power_kw', label: 'Мощность', unit: 'кВт' },
-      { key: 'nom_pressure', label: 'Номинальное давление', unit: 'бар' },
-      { key: 'pumps_count', label: 'Кол-во насосов', unit: 'шт.' },
+      { key: 'area_ha', label: 'Площадь (га)', defaultValue: '' },
+      { key: 'variety', label: 'Сорт', defaultValue: '' },
+      { key: 'irrigation', label: 'Тип полива', defaultValue: 'Капельный' },
     ],
   },
   {
     id: 'tpl-greenhouse',
+    groupId: 'grp-agro',
     name: 'Теплица',
     object_type: 'greenhouse',
-    description: 'Закрытый грунт: температура, влажность, проветривание (форточки/вентиляторы), полив.',
+    description: 'Закрытый грунт: температура, влажность, проветривание и полив.',
     scope: 'system',
     properties: [
-      { key: 'area_m2', label: 'Площадь', unit: 'м²' },
-      { key: 'crop', label: 'Культура' },
-      { key: 'heating', label: 'Контур отопления' },
+      { key: 'area_m2', label: 'Площадь (м²)', defaultValue: '' },
+      { key: 'crop', label: 'Культура', defaultValue: '' },
+      { key: 'heating', label: 'Контур отопления', defaultValue: '' },
     ],
   },
   {
     id: 'tpl-orchard',
+    groupId: 'grp-agro',
     name: 'Сад',
     object_type: 'orchard',
     description: 'Плодовый сад с мониторингом заморозков, влажности почвы и осадков.',
     scope: 'system',
     properties: [
-      { key: 'area_ha', label: 'Площадь', unit: 'га' },
-      { key: 'crop', label: 'Культура / сорт' },
-      { key: 'irrigation', label: 'Тип полива' },
+      { key: 'area_ha', label: 'Площадь (га)', defaultValue: '' },
+      { key: 'crop', label: 'Культура / сорт', defaultValue: '' },
+      { key: 'irrigation', label: 'Тип полива', defaultValue: '' },
+    ],
+  },
+  {
+    id: 'tpl-pump',
+    groupId: 'grp-infra',
+    name: 'Насосная станция',
+    object_type: 'pump_station',
+    description: 'Узел подачи воды: давление, расход и управление насосами/клапанами.',
+    scope: 'system',
+    properties: [
+      { key: 'power_kw', label: 'Мощность (кВт)', defaultValue: '' },
+      { key: 'nom_pressure', label: 'Номинальное давление (бар)', defaultValue: '' },
+      { key: 'pumps_count', label: 'Кол-во насосов', defaultValue: '' },
     ],
   },
   {
     id: 'tpl-meteo',
+    groupId: 'grp-infra',
     name: 'Метеостанция',
     object_type: 'meteo',
-    description: 'Пост метеонаблюдения: температура, влажность, осадки, ветер, солнечная радиация.',
+    description: 'Пост метеонаблюдения: температура, влажность, осадки, ветер, радиация.',
     scope: 'system',
     properties: [
-      { key: 'mast_m', label: 'Высота мачты', unit: 'м' },
-      { key: 'sensors', label: 'Состав датчиков' },
+      { key: 'mast_m', label: 'Высота мачты (м)', defaultValue: '' },
+      { key: 'sensors', label: 'Состав датчиков', defaultValue: '' },
     ],
   },
 ]
 
-const STORAGE_KEY = 'agro-scada-object-catalog-v1'
+const STORAGE_KEY = 'agro-scada-object-catalog-v2'
 
 interface PersistedData {
+  customGroups: TemplateGroup[]
   customTemplates: ObjectTemplate[]
+  templateOverrides: Record<string, Partial<ObjectTemplate>>
   customObjects: CustomObjectRecord[]
   registryMeta: Record<number, RegistryObjectMeta>
 }
@@ -118,15 +140,35 @@ interface PersistedData {
 function loadPersisted(): PersistedData {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return { customTemplates: [], customObjects: [], registryMeta: {} }
+    if (!raw) {
+      return {
+        customGroups: [],
+        customTemplates: [],
+        templateOverrides: {},
+        customObjects: [],
+        registryMeta: {},
+      }
+    }
     const parsed = JSON.parse(raw) as Partial<PersistedData>
     return {
+      customGroups: Array.isArray(parsed.customGroups) ? parsed.customGroups : [],
       customTemplates: Array.isArray(parsed.customTemplates) ? parsed.customTemplates : [],
+      templateOverrides:
+        parsed.templateOverrides && typeof parsed.templateOverrides === 'object'
+          ? parsed.templateOverrides
+          : {},
       customObjects: Array.isArray(parsed.customObjects) ? parsed.customObjects : [],
-      registryMeta: parsed.registryMeta && typeof parsed.registryMeta === 'object' ? parsed.registryMeta : {},
+      registryMeta:
+        parsed.registryMeta && typeof parsed.registryMeta === 'object' ? parsed.registryMeta : {},
     }
   } catch {
-    return { customTemplates: [], customObjects: [], registryMeta: {} }
+    return {
+      customGroups: [],
+      customTemplates: [],
+      templateOverrides: {},
+      customObjects: [],
+      registryMeta: {},
+    }
   }
 }
 
@@ -139,7 +181,11 @@ function savePersisted(data: PersistedData) {
 }
 
 interface ObjectCatalogState extends PersistedData {
+  addGroup: (name: string, parentId: string | null) => TemplateGroup
+  renameGroup: (id: string, name: string) => void
+  deleteGroup: (id: string) => void
   addTemplate: (tpl: Omit<ObjectTemplate, 'id' | 'scope'>) => ObjectTemplate
+  updateTemplate: (id: string, patch: Partial<Omit<ObjectTemplate, 'id' | 'scope'>>) => void
   deleteTemplate: (id: string) => void
   addRegistryObject: (
     obj: Omit<CustomObjectRecord, 'id' | 'farm_id' | 'tz'>,
@@ -151,8 +197,46 @@ interface ObjectCatalogState extends PersistedData {
 
 const initial = loadPersisted()
 
+function snapshot(s: ObjectCatalogState): PersistedData {
+  return {
+    customGroups: s.customGroups,
+    customTemplates: s.customTemplates,
+    templateOverrides: s.templateOverrides,
+    customObjects: s.customObjects,
+    registryMeta: s.registryMeta,
+  }
+}
+
 export const useObjectCatalogStore = create<ObjectCatalogState>((set, get) => ({
   ...initial,
+
+  addGroup: (name, parentId) => {
+    const created: TemplateGroup = {
+      id: `grp-custom-${Date.now()}`,
+      parentId,
+      name: name.trim(),
+      scope: 'custom',
+    }
+    const next = [...get().customGroups, created]
+    set({ customGroups: next })
+    savePersisted({ ...snapshot(get()), customGroups: next })
+    return created
+  },
+
+  renameGroup: (id, name) => {
+    const next = get().customGroups.map((g) => (g.id === id ? { ...g, name: name.trim() } : g))
+    set({ customGroups: next })
+    savePersisted({ ...snapshot(get()), customGroups: next })
+  },
+
+  deleteGroup: (id) => {
+    const nextGroups = get().customGroups.filter((g) => g.id !== id && g.parentId !== id)
+    const nextTemplates = get().customTemplates.map((t) =>
+      t.groupId === id ? { ...t, groupId: null } : t,
+    )
+    set({ customGroups: nextGroups, customTemplates: nextTemplates })
+    savePersisted({ ...snapshot(get()), customGroups: nextGroups, customTemplates: nextTemplates })
+  },
 
   addTemplate: (tpl) => {
     const created: ObjectTemplate = {
@@ -162,22 +246,28 @@ export const useObjectCatalogStore = create<ObjectCatalogState>((set, get) => ({
     }
     const next = [...get().customTemplates, created]
     set({ customTemplates: next })
-    savePersisted({
-      customTemplates: next,
-      customObjects: get().customObjects,
-      registryMeta: get().registryMeta,
-    })
+    savePersisted({ ...snapshot(get()), customTemplates: next })
     return created
+  },
+
+  updateTemplate: (id, patch) => {
+    const isCustom = get().customTemplates.some((t) => t.id === id)
+    if (isCustom) {
+      const next = get().customTemplates.map((t) => (t.id === id ? { ...t, ...patch } : t))
+      set({ customTemplates: next })
+      savePersisted({ ...snapshot(get()), customTemplates: next })
+    } else {
+      const prev = get().templateOverrides[id] ?? {}
+      const nextOverrides = { ...get().templateOverrides, [id]: { ...prev, ...patch } }
+      set({ templateOverrides: nextOverrides })
+      savePersisted({ ...snapshot(get()), templateOverrides: nextOverrides })
+    }
   },
 
   deleteTemplate: (id) => {
     const next = get().customTemplates.filter((t) => t.id !== id)
     set({ customTemplates: next })
-    savePersisted({
-      customTemplates: next,
-      customObjects: get().customObjects,
-      registryMeta: get().registryMeta,
-    })
+    savePersisted({ ...snapshot(get()), customTemplates: next })
   },
 
   addRegistryObject: (obj, meta) => {
@@ -192,11 +282,7 @@ export const useObjectCatalogStore = create<ObjectCatalogState>((set, get) => ({
     const nextObjects = [...get().customObjects, created]
     const nextMeta = { ...get().registryMeta, [nextId]: meta }
     set({ customObjects: nextObjects, registryMeta: nextMeta })
-    savePersisted({
-      customTemplates: get().customTemplates,
-      customObjects: nextObjects,
-      registryMeta: nextMeta,
-    })
+    savePersisted({ ...snapshot(get()), customObjects: nextObjects, registryMeta: nextMeta })
     return created
   },
 
@@ -204,24 +290,30 @@ export const useObjectCatalogStore = create<ObjectCatalogState>((set, get) => ({
     const prev = get().registryMeta[id] ?? { properties: {}, status: 'active' }
     const nextMeta = { ...get().registryMeta, [id]: { ...prev, status } }
     set({ registryMeta: nextMeta })
-    savePersisted({
-      customTemplates: get().customTemplates,
-      customObjects: get().customObjects,
-      registryMeta: nextMeta,
-    })
+    savePersisted({ ...snapshot(get()), registryMeta: nextMeta })
   },
 
   updateObjectMeta: (id, patch) => {
     const prev = get().registryMeta[id] ?? { properties: {}, status: 'active' }
     const nextMeta = { ...get().registryMeta, [id]: { ...prev, ...patch } }
     set({ registryMeta: nextMeta })
-    savePersisted({
-      customTemplates: get().customTemplates,
-      customObjects: get().customObjects,
-      registryMeta: nextMeta,
-    })
+    savePersisted({ ...snapshot(get()), registryMeta: nextMeta })
   },
 }))
+
+/** Возвращает все группы (системные + пользовательские) */
+export function getAllGroups(customGroups: TemplateGroup[]): TemplateGroup[] {
+  return [...SYSTEM_GROUPS, ...customGroups]
+}
+
+/** Возвращает все шаблоны с учётом пользовательских правок */
+export function getAllTemplates(
+  customTemplates: ObjectTemplate[],
+  overrides: Record<string, Partial<ObjectTemplate>>,
+): ObjectTemplate[] {
+  const sys = SYSTEM_TEMPLATES.map((t) => ({ ...t, ...(overrides[t.id] ?? {}) }))
+  return [...sys, ...customTemplates]
+}
 
 /** Объединяет объекты из API и созданные в реестре хозяйства */
 export function mergeRegistryObjects(

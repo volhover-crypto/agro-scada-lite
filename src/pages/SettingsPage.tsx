@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useParams } from 'react-router'
 import type { components } from '@/api/types.gen'
 import {
@@ -13,8 +13,9 @@ import { useModems } from '@/api/endpoints/modems'
 import { ru } from '@/i18n/ru'
 import { useUiStore } from '@/state/ui'
 import {
+  getAllGroups,
+  getAllTemplates,
   mergeRegistryObjects,
-  SYSTEM_TEMPLATES,
   useObjectCatalogStore,
   type ObjectTemplate,
   type ObjectTypeCode,
@@ -32,12 +33,10 @@ import {
 import s from './settings.module.css'
 
 /*
- * Настройки (T16, 05 §10):
- * - Реестр объектов хозяйства (создание из шаблона, статус Черновик / В системе / Архив, редактирование);
- * - Справочник шаблонов объектов (универсальные системные + пользовательские с конструктором свойств);
- * - Привязка каналов (onboarding, POST /bindings);
- * - Команды / тревоги / оповещения (read-only, BR-FE-7);
- * - Симулятор и флаги клиента.
+ * Настройки (3 укрупнённые вкладки):
+ * 1. «Справочник шаблонов» — строчный иерархический справочник в стиле 1С (папки + элементы + текстовые свойства);
+ * 2. «Учёт объектов» — Реестр объектов хозяйства | Привязка каналов | Посты;
+ * 3. «Работа объектов» — Команды | Тревоги | Оповещения | Симулятор.
  */
 
 type ObjectT = components['schemas']['Object']
@@ -48,17 +47,28 @@ type AlarmDefT = Record<string, unknown>
 type ChainT = Record<string, unknown>
 type NotifyChannelT = { id: number; type?: string; address?: string; enabled?: boolean }
 
-const TABS = [
-  ['objects', 'Реестр объектов'],
+type MainTab = 'templates' | 'accounting' | 'operations'
+type AccountingSubTab = 'objects' | 'binding' | 'posts'
+type OperationsSubTab = 'commands' | 'alarms' | 'notify' | 'simulator'
+
+const MAIN_TABS: readonly [MainTab, string][] = [
   ['templates', 'Справочник шаблонов'],
+  ['accounting', 'Учёт объектов'],
+  ['operations', 'Работа объектов'],
+]
+
+const ACCOUNTING_SUBTABS: readonly [AccountingSubTab, string][] = [
+  ['objects', 'Реестр объектов'],
   ['binding', ru.settings.tabBinding],
+  ['posts', 'Посты'],
+]
+
+const OPERATIONS_SUBTABS: readonly [OperationsSubTab, string][] = [
   ['commands', ru.settings.tabCommands],
   ['alarms', ru.settings.tabAlarms],
   ['notify', ru.settings.tabNotify],
   ['simulator', ru.settings.tabSimulator],
-] as const
-
-type Tab = (typeof TABS)[number][0]
+]
 
 const STATUS_LABELS: Record<RegistryStatus, string> = {
   active: 'В системе',
@@ -66,18 +76,33 @@ const STATUS_LABELS: Record<RegistryStatus, string> = {
   archived: 'В архиве',
 }
 
+function resolveInitialTabs(section?: string): {
+  main: MainTab
+  acc: AccountingSubTab
+  ops: OperationsSubTab
+} {
+  if (section === 'templates') return { main: 'templates', acc: 'objects', ops: 'commands' }
+  if (section === 'binding') return { main: 'accounting', acc: 'binding', ops: 'commands' }
+  if (section === 'posts') return { main: 'accounting', acc: 'posts', ops: 'commands' }
+  if (section === 'commands' || section === 'alarms' || section === 'notify' || section === 'simulator') {
+    return { main: 'operations', acc: 'objects', ops: section }
+  }
+  return { main: 'accounting', acc: 'objects', ops: 'commands' }
+}
+
 export function SettingsPage() {
   const { '*': section } = useParams()
-  const [tab, setTab] = useState<Tab>(() => {
-    const key = (section ?? 'objects') as Tab
-    return TABS.some(([t]) => t === key) ? key : 'objects'
-  })
+  const init = resolveInitialTabs(section)
+  const [mainTab, setMainTab] = useState<MainTab>(init.main)
+  const [accTab, setAccTab] = useState<AccountingSubTab>(init.acc)
+  const [opsTab, setOpsTab] = useState<OperationsSubTab>(init.ops)
   const [preselectTemplateId, setPreselectTemplateId] = useState<string | null>(null)
   const simMode = useUiStore((st) => st.simMode)
 
   function handleUseTemplate(templateId: string) {
     setPreselectTemplateId(templateId)
-    setTab('objects')
+    setMainTab('accounting')
+    setAccTab('objects')
   }
 
   return (
@@ -85,117 +110,392 @@ export function SettingsPage() {
       <h1 className={s.title}>{ru.settings.title}</h1>
 
       <div className={s.tabs} role="tablist" aria-label={ru.settings.title}>
-        {TABS.map(([key, label]) => (
+        {MAIN_TABS.map(([key, label]) => (
           <button
             key={key}
             type="button"
             role="tab"
-            aria-selected={tab === key}
-            className={tab === key ? s.tabActive : s.tab}
-            onClick={() => setTab(key)}
+            aria-selected={mainTab === key}
+            className={mainTab === key ? s.tabActive : s.tab}
+            onClick={() => setMainTab(key)}
           >
             {label}
           </button>
         ))}
       </div>
 
-      {tab === 'objects' && (
-        <ObjectsTab
-          preselectTemplateId={preselectTemplateId}
-          onClearPreselect={() => setPreselectTemplateId(null)}
-        />
+      {mainTab === 'templates' && <TemplatesTreeTab onUseTemplate={handleUseTemplate} />}
+
+      {mainTab === 'accounting' && (
+        <>
+          <div className={s.subtabs} role="tablist" aria-label="Учёт объектов">
+            {ACCOUNTING_SUBTABS.map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={accTab === key}
+                className={accTab === key ? s.subtabActive : s.subtab}
+                onClick={() => setAccTab(key)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {accTab === 'objects' && (
+            <ObjectsTab
+              preselectTemplateId={preselectTemplateId}
+              onClearPreselect={() => setPreselectTemplateId(null)}
+            />
+          )}
+          {accTab === 'binding' && <BindingTab />}
+          {accTab === 'posts' && <PostsTab />}
+        </>
       )}
-      {tab === 'templates' && <TemplatesTab onUseTemplate={handleUseTemplate} />}
-      {tab === 'binding' && <BindingTab />}
-      {tab === 'commands' && <CommandsTab />}
-      {tab === 'alarms' && <AlarmsTab />}
-      {tab === 'notify' && <NotifyTab />}
-      {tab === 'simulator' && <SimulatorTab simMode={simMode} />}
+
+      {mainTab === 'operations' && (
+        <>
+          <div className={s.subtabs} role="tablist" aria-label="Работа объектов">
+            {OPERATIONS_SUBTABS.map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={opsTab === key}
+                className={opsTab === key ? s.subtabActive : s.subtab}
+                onClick={() => setOpsTab(key)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {opsTab === 'commands' && <CommandsTab />}
+          {opsTab === 'alarms' && <AlarmsTab />}
+          {opsTab === 'notify' && <NotifyTab />}
+          {opsTab === 'simulator' && <SimulatorTab simMode={simMode} />}
+        </>
+      )}
     </main>
   )
 }
 
-/** Справочник шаблонов объектов: универсальные системные + пользовательские */
-function TemplatesTab({ onUseTemplate }: { onUseTemplate: (templateId: string) => void }) {
+/** 1. Справочник шаблонов — строчный иерархический справочник в стиле 1С */
+function TemplatesTreeTab({ onUseTemplate }: { onUseTemplate: (templateId: string) => void }) {
+  const customGroups = useObjectCatalogStore((st) => st.customGroups)
   const customTemplates = useObjectCatalogStore((st) => st.customTemplates)
+  const templateOverrides = useObjectCatalogStore((st) => st.templateOverrides)
+  const addGroup = useObjectCatalogStore((st) => st.addGroup)
+  const deleteGroup = useObjectCatalogStore((st) => st.deleteGroup)
   const addTemplate = useObjectCatalogStore((st) => st.addTemplate)
+  const updateTemplate = useObjectCatalogStore((st) => st.updateTemplate)
   const deleteTemplate = useObjectCatalogStore((st) => st.deleteTemplate)
-  const allTemplates = [...SYSTEM_TEMPLATES, ...customTemplates]
 
-  const [creating, setCreating] = useState(false)
-  const [name, setName] = useState('')
-  const [objectType, setObjectType] = useState<ObjectTypeCode>('other')
-  const [description, setDescription] = useState('')
-  const [props, setProps] = useState<TemplatePropertyDef[]>([
-    { key: 'prop_1', label: 'Площадь', unit: 'га' },
+  const groups = getAllGroups(customGroups)
+  const templates = getAllTemplates(customTemplates, templateOverrides)
+
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({
+    'grp-agro': true,
+    'grp-infra': true,
+  })
+  const [search, setSearch] = useState('')
+  const [mode, setMode] = useState<'none' | 'group' | 'item'>('none')
+  const [editingId, setEditingId] = useState<string | null>(null)
+
+  // Форма группы
+  const [grpName, setGrpName] = useState('')
+  const [grpParentId, setGrpParentId] = useState<string>('')
+
+  // Форма элемента (шаблона)
+  const [itemName, setItemName] = useState('')
+  const [itemGroupId, setItemGroupId] = useState<string>('grp-agro')
+  const [itemType, setItemType] = useState<ObjectTypeCode>('other')
+  const [itemDesc, setItemDesc] = useState('')
+  const [itemProps, setItemProps] = useState<TemplatePropertyDef[]>([
+    { key: 'prop_1', label: '', defaultValue: '' },
   ])
 
-  function addPropRow() {
-    setProps((p) => [...p, { key: `prop_${Date.now()}`, label: '', unit: '' }])
+  const q = search.trim().toLowerCase()
+
+  function toggleGroup(id: string) {
+    setExpanded((prev) => ({ ...prev, [id]: !(prev[id] ?? true) }))
   }
 
-  function updateProp(idx: number, patch: Partial<TemplatePropertyDef>) {
-    setProps((p) => p.map((item, i) => (i === idx ? { ...item, ...patch } : item)))
+  function openNewGroup() {
+    setEditingId(null)
+    setGrpName('')
+    setGrpParentId('')
+    setMode('group')
   }
 
-  function removeProp(idx: number) {
-    setProps((p) => p.filter((_, i) => i !== idx))
+  function openNewItem(groupId?: string | null) {
+    setEditingId(null)
+    setItemName('')
+    setItemGroupId(groupId ?? groups[0]?.id ?? '')
+    setItemType('other')
+    setItemDesc('')
+    setItemProps([{ key: `prop_${Date.now()}`, label: '', defaultValue: '' }])
+    setMode('item')
   }
 
-  function saveTemplate() {
-    if (!name.trim()) return
-    const cleanProps = props
+  function openEditItem(tpl: ObjectTemplate) {
+    setEditingId(tpl.id)
+    setItemName(tpl.name)
+    setItemGroupId(tpl.groupId ?? '')
+    setItemType(tpl.object_type)
+    setItemDesc(tpl.description)
+    setItemProps(
+      tpl.properties.length > 0
+        ? tpl.properties.map((p) => ({ ...p }))
+        : [{ key: `prop_${Date.now()}`, label: '', defaultValue: '' }],
+    )
+    setMode('item')
+  }
+
+  function saveGroup() {
+    if (!grpName.trim()) return
+    const created = addGroup(grpName.trim(), grpParentId || null)
+    setExpanded((prev) => ({ ...prev, [created.id]: true }))
+    setMode('none')
+  }
+
+  function saveItem() {
+    if (!itemName.trim()) return
+    const cleanProps = itemProps
       .filter((p) => p.label.trim() !== '')
       .map((p, idx) => ({
         key: p.key || `prop_${idx}`,
         label: p.label.trim(),
-        unit: p.unit?.trim() || undefined,
+        defaultValue: p.defaultValue?.trim() ?? '',
       }))
-    addTemplate({
-      name: name.trim(),
-      object_type: objectType,
-      description: description.trim(),
+    const payload = {
+      name: itemName.trim(),
+      groupId: itemGroupId || null,
+      object_type: itemType,
+      description: itemDesc.trim(),
       properties: cleanProps,
-    })
-    setName('')
-    setDescription('')
-    setObjectType('other')
-    setProps([{ key: 'prop_1', label: '', unit: '' }])
-    setCreating(false)
+    }
+    if (editingId) {
+      updateTemplate(editingId, payload)
+    } else {
+      addTemplate(payload)
+      if (payload.groupId) {
+        setExpanded((prev) => ({ ...prev, [payload.groupId!]: true }))
+      }
+    }
+    setMode('none')
+    setEditingId(null)
+  }
+
+  function matchesSearch(tpl: ObjectTemplate): boolean {
+    if (!q) return true
+    return (
+      tpl.name.toLowerCase().includes(q) ||
+      tpl.description.toLowerCase().includes(q) ||
+      tpl.properties.some(
+        (p) =>
+          p.label.toLowerCase().includes(q) || (p.defaultValue ?? '').toLowerCase().includes(q),
+      )
+    )
+  }
+
+  function renderTemplateRow(tpl: ObjectTemplate, depth: number) {
+    return (
+      <tr key={tpl.id}>
+        <td style={{ paddingLeft: `${12 + depth * 22}px` }}>
+          <span className={s.treeIcon} aria-hidden="true">
+            📄
+          </span>
+          <strong>{tpl.name}</strong>
+          <span className={tpl.scope === 'system' ? s.badgeSystem : s.badgeCustom}>
+            {tpl.scope === 'system' ? 'Базовый' : 'Свой'}
+          </span>
+        </td>
+        <td className={s.hint}>{tpl.description || objectTypeLabel(tpl.object_type)}</td>
+        <td>
+          <div className={s.propTags}>
+            {tpl.properties.map((p) => (
+              <span key={p.key} className={s.propTag}>
+                {p.label}
+                {p.defaultValue ? `: ${p.defaultValue}` : ''}
+              </span>
+            ))}
+          </div>
+        </td>
+        <td className={s.actionCell}>
+          <div className={s.fieldRow}>
+            <button type="button" className={s.btnPrimary} onClick={() => onUseTemplate(tpl.id)}>
+              В учёт →
+            </button>
+            <button type="button" className={s.btn} onClick={() => openEditItem(tpl)}>
+              Изменить
+            </button>
+            {tpl.scope === 'custom' && (
+              <button type="button" className={s.btn} onClick={() => deleteTemplate(tpl.id)}>
+                Удалить
+              </button>
+            )}
+          </div>
+        </td>
+      </tr>
+    )
+  }
+
+  function renderGroupBranch(parentId: string | null, depth: number): ReactNode[] {
+    const rows: ReactNode[] = []
+    const childGroups = groups.filter((g) => g.parentId === parentId)
+
+    for (const grp of childGroups) {
+      const isOpen = q ? true : (expanded[grp.id] ?? true)
+      const directItems = templates.filter((t) => t.groupId === grp.id && matchesSearch(t))
+      const subRows = renderGroupBranch(grp.id, depth + 1)
+      if (q && directItems.length === 0 && subRows.length === 0 && !grp.name.toLowerCase().includes(q)) {
+        continue
+      }
+
+      rows.push(
+        <tr key={grp.id} className={s.treeRowGroup}>
+          <td colSpan={3} style={{ paddingLeft: `${10 + depth * 22}px` }}>
+            <button
+              type="button"
+              className={s.treeToggle}
+              onClick={() => toggleGroup(grp.id)}
+              aria-expanded={isOpen}
+            >
+              {isOpen ? '▾' : '▸'} 📁 {grp.name}
+            </button>
+            <span className={s.policyHint}> ({directItems.length})</span>
+          </td>
+          <td className={s.actionCell}>
+            <div className={s.fieldRow}>
+              <button type="button" className={s.btn} onClick={() => openNewItem(grp.id)}>
+                + Элемент
+              </button>
+              {grp.scope === 'custom' && (
+                <button type="button" className={s.btn} onClick={() => deleteGroup(grp.id)}>
+                  Удалить
+                </button>
+              )}
+            </div>
+          </td>
+        </tr>,
+      )
+
+      if (isOpen) {
+        rows.push(...subRows)
+        for (const tpl of directItems) {
+          rows.push(renderTemplateRow(tpl, depth + 1))
+        }
+      }
+    }
+
+    if (parentId === null) {
+      const rootItems = templates.filter((t) => !t.groupId && matchesSearch(t))
+      for (const tpl of rootItems) {
+        rows.push(renderTemplateRow(tpl, 0))
+      }
+    }
+
+    return rows
   }
 
   return (
     <div className={s.card}>
       <div className={s.toolbar}>
-        <div>
-          <h2 className={s.stepTitle}>Универсальный справочник шаблонов</h2>
-          <p className={s.hint}>
-            Базовые шаблоны доступны для любого хозяйства. При необходимости добавьте свой тип объекта с нужными свойствами.
-          </p>
+        <div className={s.fieldRow}>
+          <button type="button" className={s.btnPrimary} onClick={() => openNewItem()}>
+            + Элемент
+          </button>
+          <button type="button" className={s.btn} onClick={openNewGroup}>
+            + Группа
+          </button>
         </div>
-        <button type="button" className={s.btnPrimary} onClick={() => setCreating((v) => !v)}>
-          {creating ? 'Скрыть форму' : '+ Новый шаблон'}
-        </button>
+        <input
+          className={`${s.input} ${s.searchInput}`}
+          placeholder="Поиск по справочнику..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
       </div>
 
-      {creating && (
+      {mode === 'group' && (
         <div className={s.formBox}>
+          <strong>Новая группа (папка)</strong>
           <div className={s.formGrid}>
             <label className={s.field}>
-              Название шаблона
+              Наименование группы
               <input
                 className={s.input}
-                placeholder="Например: Холодильная камера"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                placeholder="Например: Склады и холодильники"
+                value={grpName}
+                onChange={(e) => setGrpName(e.target.value)}
               />
             </label>
             <label className={s.field}>
-              Базовый тип (для 3D/2D и иконок)
+              Родительская группа
               <select
                 className={s.select}
-                value={objectType}
-                onChange={(e) => setObjectType(e.target.value as ObjectTypeCode)}
+                value={grpParentId}
+                onChange={(e) => setGrpParentId(e.target.value)}
+              >
+                <option value="">(В корне справочника)</option>
+                {groups.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <div className={s.fieldRow}>
+            <button
+              type="button"
+              className={s.btnPrimary}
+              disabled={!grpName.trim()}
+              onClick={saveGroup}
+            >
+              Создать группу
+            </button>
+            <button type="button" className={s.btn} onClick={() => setMode('none')}>
+              {ru.settings.cancel}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {mode === 'item' && (
+        <div className={s.formBox}>
+          <strong>{editingId ? 'Редактирование элемента справочника' : 'Новый элемент справочника'}</strong>
+          <div className={s.formGrid}>
+            <label className={s.field}>
+              Наименование
+              <input
+                className={s.input}
+                placeholder="Например: Холодильная камера"
+                value={itemName}
+                onChange={(e) => setItemName(e.target.value)}
+              />
+            </label>
+            <label className={s.field}>
+              Группа (папка)
+              <select
+                className={s.select}
+                value={itemGroupId}
+                onChange={(e) => setItemGroupId(e.target.value)}
+              >
+                <option value="">(Без группы)</option>
+                {groups.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className={s.field}>
+              Базовый тип (для 3D/2D)
+              <select
+                className={s.select}
+                value={itemType}
+                onChange={(e) => setItemType(e.target.value as ObjectTypeCode)}
               >
                 {OBJECT_TYPES.map(([code, label]) => (
                   <option key={code} value={code}>
@@ -205,39 +505,63 @@ function TemplatesTab({ onUseTemplate }: { onUseTemplate: (templateId: string) =
               </select>
             </label>
           </div>
+
           <label className={s.field}>
             Описание
             <input
               className={s.input}
-              placeholder="Краткое назначение типового объекта"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Текстовое описание типового объекта"
+              value={itemDesc}
+              onChange={(e) => setItemDesc(e.target.value)}
             />
           </label>
 
           <div className={s.field}>
-            <span>Свойства шаблона (заполняются при добавлении объекта в реестр):</span>
-            {props.map((p, idx) => (
+            <span>Произвольные свойства (все значения — текст):</span>
+            {itemProps.map((p, idx) => (
               <div key={p.key} className={s.fieldRow}>
                 <input
                   className={s.input}
-                  placeholder="Название свойства (напр. Объём)"
+                  placeholder="Название свойства (напр. Мощность, кВт)"
                   value={p.label}
-                  onChange={(e) => updateProp(idx, { label: e.target.value })}
+                  onChange={(e) =>
+                    setItemProps((prev) =>
+                      prev.map((it, i) => (i === idx ? { ...it, label: e.target.value } : it)),
+                    )
+                  }
                 />
                 <input
                   className={s.input}
-                  placeholder="Ед. изм. (напр. м³)"
-                  value={p.unit ?? ''}
-                  onChange={(e) => updateProp(idx, { unit: e.target.value })}
+                  placeholder="Значение по умолчанию (текст)"
+                  value={p.defaultValue ?? ''}
+                  onChange={(e) =>
+                    setItemProps((prev) =>
+                      prev.map((it, i) =>
+                        i === idx ? { ...it, defaultValue: e.target.value } : it,
+                      ),
+                    )
+                  }
                 />
-                <button type="button" className={s.btn} onClick={() => removeProp(idx)}>
+                <button
+                  type="button"
+                  className={s.btn}
+                  onClick={() => setItemProps((prev) => prev.filter((_, i) => i !== idx))}
+                >
                   ×
                 </button>
               </div>
             ))}
             <div>
-              <button type="button" className={s.btn} onClick={addPropRow}>
+              <button
+                type="button"
+                className={s.btn}
+                onClick={() =>
+                  setItemProps((prev) => [
+                    ...prev,
+                    { key: `prop_${Date.now()}`, label: '', defaultValue: '' },
+                  ])
+                }
+              >
                 + Добавить свойство
               </button>
             </div>
@@ -247,58 +571,41 @@ function TemplatesTab({ onUseTemplate }: { onUseTemplate: (templateId: string) =
             <button
               type="button"
               className={s.btnPrimary}
-              disabled={!name.trim()}
-              onClick={saveTemplate}
+              disabled={!itemName.trim()}
+              onClick={saveItem}
             >
-              Сохранить в справочник
+              {ru.settings.save}
             </button>
-            <button type="button" className={s.btn} onClick={() => setCreating(false)}>
+            <button
+              type="button"
+              className={s.btn}
+              onClick={() => {
+                setMode('none')
+                setEditingId(null)
+              }}
+            >
               {ru.settings.cancel}
             </button>
           </div>
         </div>
       )}
 
-      <div className={s.templateGrid}>
-        {allTemplates.map((tpl) => (
-          <div key={tpl.id} className={s.templateCard}>
-            <div className={s.templateHead}>
-              <strong>{tpl.name}</strong>
-              <span className={tpl.scope === 'system' ? s.badgeSystem : s.badgeCustom}>
-                {tpl.scope === 'system' ? 'Системный' : 'Свой'}
-              </span>
-            </div>
-            <p className={s.hint}>{tpl.description || objectTypeLabel(tpl.object_type)}</p>
-            <div className={s.propTags}>
-              {tpl.properties.map((p) => (
-                <span key={p.key} className={s.propTag}>
-                  {p.label}
-                  {p.unit ? `, ${p.unit}` : ''}
-                </span>
-              ))}
-            </div>
-            <div className={s.fieldRow}>
-              <button
-                type="button"
-                className={s.btnPrimary}
-                onClick={() => onUseTemplate(tpl.id)}
-              >
-                Добавить в реестр →
-              </button>
-              {tpl.scope === 'custom' && (
-                <button type="button" className={s.btn} onClick={() => deleteTemplate(tpl.id)}>
-                  Удалить
-                </button>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
+      <table className={s.table}>
+        <thead>
+          <tr>
+            <th>Наименование</th>
+            <th>Описание</th>
+            <th>Свойства</th>
+            <th aria-label="Действия" />
+          </tr>
+        </thead>
+        <tbody>{renderGroupBranch(null, 0)}</tbody>
+      </table>
     </div>
   )
 }
 
-/** Реестр объектов хозяйства: добавление из шаблона + управление активацией */
+/** 2.1. Учёт объектов → Реестр объектов хозяйства */
 function ObjectsTab({
   preselectTemplateId,
   onClearPreselect,
@@ -307,16 +614,16 @@ function ObjectsTab({
   onClearPreselect: () => void
 }) {
   const { data: apiObjects } = useObjects()
-  const { data: posts } = usePosts()
   const update = useUpdateObject()
 
   const customTemplates = useObjectCatalogStore((st) => st.customTemplates)
+  const templateOverrides = useObjectCatalogStore((st) => st.templateOverrides)
   const customObjects = useObjectCatalogStore((st) => st.customObjects)
   const registryMeta = useObjectCatalogStore((st) => st.registryMeta)
   const addRegistryObject = useObjectCatalogStore((st) => st.addRegistryObject)
   const setObjectStatus = useObjectCatalogStore((st) => st.setObjectStatus)
 
-  const allTemplates = [...SYSTEM_TEMPLATES, ...customTemplates]
+  const allTemplates = getAllTemplates(customTemplates, templateOverrides)
   const allObjects = mergeRegistryObjects(apiObjects ?? [], customObjects)
 
   const [editing, setEditing] = useState<number | null>(null)
@@ -334,6 +641,10 @@ function ObjectsTab({
 
   function handleCreate(initialStatus: RegistryStatus) {
     if (!newName.trim() || !activeTemplate) return
+    const mergedProps: Record<string, string> = {}
+    for (const p of activeTemplate.properties) {
+      mergedProps[p.key] = newProps[p.key] ?? p.defaultValue ?? ''
+    }
     const created = addRegistryObject(
       {
         name: newName.trim(),
@@ -344,7 +655,7 @@ function ObjectsTab({
       {
         templateId: activeTemplate.id,
         description: newDesc.trim() || activeTemplate.description,
-        properties: { ...newProps },
+        properties: mergedProps,
         status: initialStatus,
       },
     )
@@ -362,7 +673,7 @@ function ObjectsTab({
         <div>
           <h2 className={s.stepTitle}>Реестр объектов хозяйства</h2>
           <p className={s.hint}>
-            Профиль вашего хозяйства: добавляйте объекты из справочника шаблонов и активируйте нужные для вывода в мониторинг.
+            Добавляйте объекты хозяйства из справочника шаблонов и управляйте их выводом в мониторинг.
           </p>
         </div>
         <button
@@ -393,7 +704,7 @@ function ObjectsTab({
               >
                 {allTemplates.map((tpl) => (
                   <option key={tpl.id} value={tpl.id}>
-                    {tpl.name} ({tpl.scope === 'system' ? 'системный' : 'свой'})
+                    {tpl.name}
                   </option>
                 ))}
               </select>
@@ -444,10 +755,10 @@ function ObjectsTab({
               {activeTemplate.properties.map((prop) => (
                 <label key={prop.key} className={s.field}>
                   {prop.label}
-                  {prop.unit ? ` (${prop.unit})` : ''}
                   <input
                     className={s.input}
-                    value={newProps[prop.key] ?? ''}
+                    placeholder={prop.defaultValue || 'Текстовое значение'}
+                    value={newProps[prop.key] ?? prop.defaultValue ?? ''}
                     onChange={(e) =>
                       setNewProps((prev) => ({ ...prev, [prop.key]: e.target.value }))
                     }
@@ -540,7 +851,6 @@ function ObjectsTab({
                           return (
                             <span key={k} className={s.propTag}>
                               {def?.label ?? k}: {val}
-                              {def?.unit ? ` ${def.unit}` : ''}
                             </span>
                           )
                         })}
@@ -564,7 +874,7 @@ function ObjectsTab({
                 <td className={s.hint}>
                   {o.lat?.toFixed(4)}, {o.lon?.toFixed(4)}
                 </td>
-                <td>
+                <td className={s.actionCell}>
                   <div className={s.fieldRow}>
                     {status !== 'active' ? (
                       <button
@@ -608,7 +918,15 @@ function ObjectsTab({
           })}
         </tbody>
       </table>
+    </div>
+  )
+}
 
+/** 2.3. Учёт объектов → Посты и координаты на сцене */
+function PostsTab() {
+  const { data: posts } = usePosts()
+  return (
+    <div className={s.card}>
       <h2 className={s.stepTitle}>{ru.settings.colScene}</h2>
       <table className={s.table}>
         <thead>
@@ -692,7 +1010,7 @@ function ObjectEditRow({
   )
 }
 
-/** Привязка каналов (onboarding, 05 §10) — приёмка T16 */
+/** 2.2. Учёт объектов → Привязка каналов (onboarding, 05 §10) */
 function BindingTab() {
   const { data: channels } = useUnassignedChannels()
   const { data: posts } = usePosts()
@@ -758,7 +1076,6 @@ function BindingTab() {
   )
 }
 
-/** Строка неназначенного канала: подпись, живое значение, пост, диапазон */
 function BindingRow({
   channel: ch,
   modemName,
@@ -832,7 +1149,7 @@ function BindingRow({
   )
 }
 
-/** Команды и политики — read-only (BR-FE-7) */
+/** 3.1. Работа объектов → Команды и политики (read-only) */
 function CommandsTab() {
   const { data: defs } = useSettingsSection<CommandDefT[]>('command_defs')
   const { data: actuators } = useSettingsSection<ActuatorT[]>('actuators')
@@ -873,7 +1190,7 @@ function CommandsTab() {
   )
 }
 
-/** Определения тревог и цепочки — read-only (BR-FE-7) */
+/** 3.2. Работа объектов → Тревоги и цепочки (read-only) */
 function AlarmsTab() {
   const { data: alarmDefs } = useSettingsSection<AlarmDefT[]>('alarm_defs')
   const { data: chains } = useSettingsSection<ChainT[]>('chains')
@@ -908,7 +1225,7 @@ function AlarmsTab() {
   )
 }
 
-/** Каналы оповещения — read-only */
+/** 3.3. Работа объектов → Каналы оповещения (read-only) */
 function NotifyTab() {
   const { data: channels } = useSettingsSection<NotifyChannelT[]>('channels')
   return (
@@ -934,7 +1251,7 @@ function NotifyTab() {
   )
 }
 
-/** Симулятор: флаг только для чтения (BR-FE-6/D-18) + флаги клиента (PUT) */
+/** 3.4. Работа объектов → Симулятор и флаги клиента */
 function SimulatorTab({ simMode }: { simMode: boolean }) {
   const { data: client } = useSettingsSection<{
     internet_allowed?: boolean

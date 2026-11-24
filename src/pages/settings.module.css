@@ -3,9 +3,9 @@
 .page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
   padding: 16px 24px 32px;
-  max-width: 1100px;
+  max-width: 1180px;
 }
 
 .title {
@@ -25,8 +25,9 @@
   border: 1px solid var(--border);
   background: var(--bg-surface);
   border-radius: 10px;
-  padding: 8px 14px;
+  padding: 8px 16px;
   font: inherit;
+  font-weight: 600;
   cursor: pointer;
   min-height: 44px;
 }
@@ -35,6 +36,39 @@
   background: var(--brand-olive-dark);
   color: #fff;
   border-color: var(--brand-olive-dark);
+}
+
+.subtabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.subtab,
+.subtabActive {
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  min-height: 36px;
+}
+
+.subtab:hover {
+  background: var(--bg-sunken);
+  color: var(--text-primary);
+}
+
+.subtabActive {
+  background: var(--bg-sunken);
+  border-color: var(--border);
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
 .card {
@@ -47,10 +81,14 @@
 .toolbar {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
   flex-wrap: wrap;
   margin-bottom: 14px;
+}
+
+.searchInput {
+  min-width: 240px;
 }
 
 .stepTitle {
@@ -80,27 +118,26 @@
   gap: 10px;
 }
 
-.templateGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
-  gap: 12px;
-}
-
-.templateCard {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+.treeRowGroup {
   background: var(--bg-sunken);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 12px 14px;
 }
 
-.templateHead {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
+.treeToggle {
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.treeIcon {
+  margin-right: 6px;
+}
+
+.actionCell {
+  white-space: nowrap;
 }
 
 .badgeSystem,
@@ -110,11 +147,12 @@
 .statusArchived {
   display: inline-flex;
   align-items: center;
-  padding: 2px 9px;
+  padding: 2px 8px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   white-space: nowrap;
+  margin-left: 8px;
 }
 
 .badgeSystem {
@@ -128,16 +166,19 @@
 }
 
 .statusActive {
+  margin-left: 0;
   background: rgba(74, 124, 44, 0.14);
   color: var(--actuator-on);
 }
 
 .statusDraft {
+  margin-left: 0;
   background: rgba(201, 161, 0, 0.18);
   color: #8a6d00;
 }
 
 .statusArchived {
+  margin-left: 0;
   background: var(--bg-sunken);
   color: var(--text-secondary);
 }
@@ -176,7 +217,7 @@
   padding: 8px 10px;
   border-bottom: 1px solid var(--border);
   font-size: 14px;
-  vertical-align: top;
+  vertical-align: middle;
 }
 
 .table tr:last-child td {
@@ -195,7 +236,7 @@
 
 .fieldRow {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
   align-items: flex-end;
 }
@@ -212,10 +253,11 @@
   border: 1px solid var(--border);
   background: var(--bg-surface);
   border-radius: 10px;
-  padding: 8px 14px;
+  padding: 6px 12px;
   font: inherit;
+  font-size: 13px;
   cursor: pointer;
-  min-height: 44px;
+  min-height: 36px;
 }
 
 .btnPrimary {
@@ -223,11 +265,12 @@
   background: var(--brand-olive-dark);
   color: #fff;
   border-radius: 10px;
-  padding: 8px 16px;
+  padding: 6px 14px;
   font: inherit;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  min-height: 44px;
+  min-height: 36px;
 }
 
 .btn:disabled,
@@ -243,7 +286,7 @@
 .hint {
   color: var(--text-secondary);
   font-size: 13px;
-  margin: 8px 0 0;
+  margin: 4px 0 0;
 }
 
 .readonlyNote {
