@@ -6,18 +6,30 @@ import { useObjects } from '@/api/endpoints/objects'
 import logo from '@/assets/brand/logo.svg'
 import { queryClient } from '@/api/queryClient'
 import { ru } from '@/i18n/ru'
+import {
+  filterActiveObjects,
+  mergeRegistryObjects,
+  useObjectCatalogStore,
+} from '@/state/objectCatalog'
 import { getSessionUser } from '@/state/session'
 import { useUiStore } from '@/state/ui'
 import s from './shell.module.css'
 
-/** Шапка (05 §0): логотип, выбор объекта, статус связи (агрегат по модемам до BR-FE-1),
+/** Шапка (05 §0): логотип, выбор активного объекта из реестра, статус связи,
  *  счётчик тревог, метка «ТЕСТ» (BR-FE-6), пользователь и выход */
 export function TopBar() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { data: objects } = useObjects()
+  const { data: apiObjects } = useObjects()
   const { data: modems } = useModems()
   const { data: alarms } = useAlarms()
+  const customObjects = useObjectCatalogStore((st) => st.customObjects)
+  const registryMeta = useObjectCatalogStore((st) => st.registryMeta)
+  const objects = filterActiveObjects(
+    mergeRegistryObjects(apiObjects ?? [], customObjects),
+    registryMeta,
+  )
+
   const selectedObjectId = useUiStore((st) => st.selectedObjectId)
   const setSelectedObject = useUiStore((st) => st.setSelectedObject)
   const simMode = useUiStore((st) => st.simMode)
@@ -66,7 +78,7 @@ export function TopBar() {
         <option value="" disabled>
           {ru.shell.objectSelectPlaceholder}
         </option>
-        {(objects ?? []).map((o) => (
+        {objects.map((o) => (
           <option key={o.id} value={o.id}>
             {o.name}
           </option>

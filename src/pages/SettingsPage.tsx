@@ -13,6 +13,15 @@ import { useModems } from '@/api/endpoints/modems'
 import { ru } from '@/i18n/ru'
 import { useUiStore } from '@/state/ui'
 import {
+  mergeRegistryObjects,
+  SYSTEM_TEMPLATES,
+  useObjectCatalogStore,
+  type ObjectTemplate,
+  type ObjectTypeCode,
+  type RegistryStatus,
+  type TemplatePropertyDef,
+} from '@/state/objectCatalog'
+import {
   channelBindingInfo,
   channelLiveValue,
   objectTypeLabel,
@@ -23,12 +32,12 @@ import {
 import s from './settings.module.css'
 
 /*
- * Настройки (T16, 05 §10): объекты (PUT /objects/{id}), привязка/onboarding
- * (POST /bindings — приёмка: 4 канала привязаны, исчезают из неназначенных),
- * команды/тревоги/цепочки/оповещения — read-only (PUT в контракте — object
- * без деталей, BR-FE-7); симулятор — только чтение флага (BR-FE-6, D-18);
- * внешние источники — после обновления контракта (В3). Позиции постов
- * (scene_x/y) — read-only до появления PUT /posts (BR-FE-9).
+ * Настройки (T16, 05 §10):
+ * - Реестр объектов хозяйства (создание из шаблона, статус Черновик / В системе / Архив, редактирование);
+ * - Справочник шаблонов объектов (универсальные системные + пользовательские с конструктором свойств);
+ * - Привязка каналов (onboarding, POST /bindings);
+ * - Команды / тревоги / оповещения (read-only, BR-FE-7);
+ * - Симулятор и флаги клиента.
  */
 
 type ObjectT = components['schemas']['Object']
@@ -40,7 +49,8 @@ type ChainT = Record<string, unknown>
 type NotifyChannelT = { id: number; type?: string; address?: string; enabled?: boolean }
 
 const TABS = [
-  ['objects', ru.settings.tabObjects],
+  ['objects', 'Реестр объектов'],
+  ['templates', 'Справочник шаблонов'],
   ['binding', ru.settings.tabBinding],
   ['commands', ru.settings.tabCommands],
   ['alarms', ru.settings.tabAlarms],
@@ -50,13 +60,25 @@ const TABS = [
 
 type Tab = (typeof TABS)[number][0]
 
+const STATUS_LABELS: Record<RegistryStatus, string> = {
+  active: 'В системе',
+  draft: 'Черновик',
+  archived: 'В архиве',
+}
+
 export function SettingsPage() {
   const { '*': section } = useParams()
   const [tab, setTab] = useState<Tab>(() => {
     const key = (section ?? 'objects') as Tab
     return TABS.some(([t]) => t === key) ? key : 'objects'
   })
+  const [preselectTemplateId, setPreselectTemplateId] = useState<string | null>(null)
   const simMode = useUiStore((st) => st.simMode)
+
+  function handleUseTemplate(templateId: string) {
+    setPreselectTemplateId(templateId)
+    setTab('objects')
+  }
 
   return (
     <main className={s.page}>
@@ -77,7 +99,13 @@ export function SettingsPage() {
         ))}
       </div>
 
-      {tab === 'objects' && <ObjectsTab />}
+      {tab === 'objects' && (
+        <ObjectsTab
+          preselectTemplateId={preselectTemplateId}
+          onClearPreselect={() => setPreselectTemplateId(null)}
+        />
+      )}
+      {tab === 'templates' && <TemplatesTab onUseTemplate={handleUseTemplate} />}
       {tab === 'binding' && <BindingTab />}
       {tab === 'commands' && <CommandsTab />}
       {tab === 'alarms' && <AlarmsTab />}
@@ -87,28 +115,399 @@ export function SettingsPage() {
   )
 }
 
-/** Объекты и посты (05 §10): объекты редактируются, посты — read-only (BR-FE-9) */
-function ObjectsTab() {
-  const { data: objects } = useObjects()
-  const { data: posts } = usePosts()
-  const update = useUpdateObject()
-  const [editing, setEditing] = useState<number | null>(null)
-  const [saved, setSaved] = useState<number | null>(null)
+/** Справочник шаблонов объектов: универсальные системные + пользовательские */
+function TemplatesTab({ onUseTemplate }: { onUseTemplate: (templateId: string) => void }) {
+  const customTemplates = useObjectCatalogStore((st) => st.customTemplates)
+  const addTemplate = useObjectCatalogStore((st) => st.addTemplate)
+  const deleteTemplate = useObjectCatalogStore((st) => st.deleteTemplate)
+  const allTemplates = [...SYSTEM_TEMPLATES, ...customTemplates]
+
+  const [creating, setCreating] = useState(false)
+  const [name, setName] = useState('')
+  const [objectType, setObjectType] = useState<ObjectTypeCode>('other')
+  const [description, setDescription] = useState('')
+  const [props, setProps] = useState<TemplatePropertyDef[]>([
+    { key: 'prop_1', label: 'Площадь', unit: 'га' },
+  ])
+
+  function addPropRow() {
+    setProps((p) => [...p, { key: `prop_${Date.now()}`, label: '', unit: '' }])
+  }
+
+  function updateProp(idx: number, patch: Partial<TemplatePropertyDef>) {
+    setProps((p) => p.map((item, i) => (i === idx ? { ...item, ...patch } : item)))
+  }
+
+  function removeProp(idx: number) {
+    setProps((p) => p.filter((_, i) => i !== idx))
+  }
+
+  function saveTemplate() {
+    if (!name.trim()) return
+    const cleanProps = props
+      .filter((p) => p.label.trim() !== '')
+      .map((p, idx) => ({
+        key: p.key || `prop_${idx}`,
+        label: p.label.trim(),
+        unit: p.unit?.trim() || undefined,
+      }))
+    addTemplate({
+      name: name.trim(),
+      object_type: objectType,
+      description: description.trim(),
+      properties: cleanProps,
+    })
+    setName('')
+    setDescription('')
+    setObjectType('other')
+    setProps([{ key: 'prop_1', label: '', unit: '' }])
+    setCreating(false)
+  }
 
   return (
     <div className={s.card}>
+      <div className={s.toolbar}>
+        <div>
+          <h2 className={s.stepTitle}>Универсальный справочник шаблонов</h2>
+          <p className={s.hint}>
+            Базовые шаблоны доступны для любого хозяйства. При необходимости добавьте свой тип объекта с нужными свойствами.
+          </p>
+        </div>
+        <button type="button" className={s.btnPrimary} onClick={() => setCreating((v) => !v)}>
+          {creating ? 'Скрыть форму' : '+ Новый шаблон'}
+        </button>
+      </div>
+
+      {creating && (
+        <div className={s.formBox}>
+          <div className={s.formGrid}>
+            <label className={s.field}>
+              Название шаблона
+              <input
+                className={s.input}
+                placeholder="Например: Холодильная камера"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </label>
+            <label className={s.field}>
+              Базовый тип (для 3D/2D и иконок)
+              <select
+                className={s.select}
+                value={objectType}
+                onChange={(e) => setObjectType(e.target.value as ObjectTypeCode)}
+              >
+                {OBJECT_TYPES.map(([code, label]) => (
+                  <option key={code} value={code}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <label className={s.field}>
+            Описание
+            <input
+              className={s.input}
+              placeholder="Краткое назначение типового объекта"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </label>
+
+          <div className={s.field}>
+            <span>Свойства шаблона (заполняются при добавлении объекта в реестр):</span>
+            {props.map((p, idx) => (
+              <div key={p.key} className={s.fieldRow}>
+                <input
+                  className={s.input}
+                  placeholder="Название свойства (напр. Объём)"
+                  value={p.label}
+                  onChange={(e) => updateProp(idx, { label: e.target.value })}
+                />
+                <input
+                  className={s.input}
+                  placeholder="Ед. изм. (напр. м³)"
+                  value={p.unit ?? ''}
+                  onChange={(e) => updateProp(idx, { unit: e.target.value })}
+                />
+                <button type="button" className={s.btn} onClick={() => removeProp(idx)}>
+                  ×
+                </button>
+              </div>
+            ))}
+            <div>
+              <button type="button" className={s.btn} onClick={addPropRow}>
+                + Добавить свойство
+              </button>
+            </div>
+          </div>
+
+          <div className={s.fieldRow}>
+            <button
+              type="button"
+              className={s.btnPrimary}
+              disabled={!name.trim()}
+              onClick={saveTemplate}
+            >
+              Сохранить в справочник
+            </button>
+            <button type="button" className={s.btn} onClick={() => setCreating(false)}>
+              {ru.settings.cancel}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className={s.templateGrid}>
+        {allTemplates.map((tpl) => (
+          <div key={tpl.id} className={s.templateCard}>
+            <div className={s.templateHead}>
+              <strong>{tpl.name}</strong>
+              <span className={tpl.scope === 'system' ? s.badgeSystem : s.badgeCustom}>
+                {tpl.scope === 'system' ? 'Системный' : 'Свой'}
+              </span>
+            </div>
+            <p className={s.hint}>{tpl.description || objectTypeLabel(tpl.object_type)}</p>
+            <div className={s.propTags}>
+              {tpl.properties.map((p) => (
+                <span key={p.key} className={s.propTag}>
+                  {p.label}
+                  {p.unit ? `, ${p.unit}` : ''}
+                </span>
+              ))}
+            </div>
+            <div className={s.fieldRow}>
+              <button
+                type="button"
+                className={s.btnPrimary}
+                onClick={() => onUseTemplate(tpl.id)}
+              >
+                Добавить в реестр →
+              </button>
+              {tpl.scope === 'custom' && (
+                <button type="button" className={s.btn} onClick={() => deleteTemplate(tpl.id)}>
+                  Удалить
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/** Реестр объектов хозяйства: добавление из шаблона + управление активацией */
+function ObjectsTab({
+  preselectTemplateId,
+  onClearPreselect,
+}: {
+  preselectTemplateId: string | null
+  onClearPreselect: () => void
+}) {
+  const { data: apiObjects } = useObjects()
+  const { data: posts } = usePosts()
+  const update = useUpdateObject()
+
+  const customTemplates = useObjectCatalogStore((st) => st.customTemplates)
+  const customObjects = useObjectCatalogStore((st) => st.customObjects)
+  const registryMeta = useObjectCatalogStore((st) => st.registryMeta)
+  const addRegistryObject = useObjectCatalogStore((st) => st.addRegistryObject)
+  const setObjectStatus = useObjectCatalogStore((st) => st.setObjectStatus)
+
+  const allTemplates = [...SYSTEM_TEMPLATES, ...customTemplates]
+  const allObjects = mergeRegistryObjects(apiObjects ?? [], customObjects)
+
+  const [editing, setEditing] = useState<number | null>(null)
+  const [saved, setSaved] = useState<number | null>(null)
+  const [adding, setAdding] = useState(Boolean(preselectTemplateId))
+  const [selectedTplId, setSelectedTplId] = useState(preselectTemplateId ?? allTemplates[0]!.id)
+  const [newName, setNewName] = useState('')
+  const [newDesc, setNewDesc] = useState('')
+  const [newLat, setNewLat] = useState('44.5320')
+  const [newLon, setNewLon] = useState('33.7010')
+  const [newProps, setNewProps] = useState<Record<string, string>>({})
+
+  const activeTemplate: ObjectTemplate | undefined =
+    allTemplates.find((t) => t.id === (preselectTemplateId ?? selectedTplId)) ?? allTemplates[0]
+
+  function handleCreate(initialStatus: RegistryStatus) {
+    if (!newName.trim() || !activeTemplate) return
+    const created = addRegistryObject(
+      {
+        name: newName.trim(),
+        object_type: activeTemplate.object_type,
+        lat: Number(newLat) || 44.532,
+        lon: Number(newLon) || 33.701,
+      },
+      {
+        templateId: activeTemplate.id,
+        description: newDesc.trim() || activeTemplate.description,
+        properties: { ...newProps },
+        status: initialStatus,
+      },
+    )
+    setNewName('')
+    setNewDesc('')
+    setNewProps({})
+    setAdding(false)
+    onClearPreselect()
+    setSaved(created.id)
+  }
+
+  return (
+    <div className={s.card}>
+      <div className={s.toolbar}>
+        <div>
+          <h2 className={s.stepTitle}>Реестр объектов хозяйства</h2>
+          <p className={s.hint}>
+            Профиль вашего хозяйства: добавляйте объекты из справочника шаблонов и активируйте нужные для вывода в мониторинг.
+          </p>
+        </div>
+        <button
+          type="button"
+          className={s.btnPrimary}
+          onClick={() => {
+            setAdding((v) => !v)
+            onClearPreselect()
+          }}
+        >
+          {adding ? 'Скрыть форму' : '+ Добавить из шаблона'}
+        </button>
+      </div>
+
+      {(adding || preselectTemplateId) && activeTemplate && (
+        <div className={s.formBox}>
+          <div className={s.formGrid}>
+            <label className={s.field}>
+              Шаблон из справочника
+              <select
+                className={s.select}
+                value={activeTemplate.id}
+                onChange={(e) => {
+                  onClearPreselect()
+                  setSelectedTplId(e.target.value)
+                  setNewProps({})
+                }}
+              >
+                {allTemplates.map((tpl) => (
+                  <option key={tpl.id} value={tpl.id}>
+                    {tpl.name} ({tpl.scope === 'system' ? 'системный' : 'свой'})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className={s.field}>
+              Название объекта в хозяйстве
+              <input
+                className={s.input}
+                placeholder={`Например: ${activeTemplate.name} №2`}
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+              />
+            </label>
+          </div>
+
+          <div className={s.formGrid}>
+            <label className={s.field}>
+              Описание
+              <input
+                className={s.input}
+                placeholder={activeTemplate.description}
+                value={newDesc}
+                onChange={(e) => setNewDesc(e.target.value)}
+              />
+            </label>
+            <div className={s.fieldRow}>
+              <label className={s.field}>
+                Широта (lat)
+                <input
+                  className={s.input}
+                  value={newLat}
+                  onChange={(e) => setNewLat(e.target.value)}
+                />
+              </label>
+              <label className={s.field}>
+                Долгота (lon)
+                <input
+                  className={s.input}
+                  value={newLon}
+                  onChange={(e) => setNewLon(e.target.value)}
+                />
+              </label>
+            </div>
+          </div>
+
+          {activeTemplate.properties.length > 0 && (
+            <div className={s.formGrid}>
+              {activeTemplate.properties.map((prop) => (
+                <label key={prop.key} className={s.field}>
+                  {prop.label}
+                  {prop.unit ? ` (${prop.unit})` : ''}
+                  <input
+                    className={s.input}
+                    value={newProps[prop.key] ?? ''}
+                    onChange={(e) =>
+                      setNewProps((prev) => ({ ...prev, [prop.key]: e.target.value }))
+                    }
+                  />
+                </label>
+              ))}
+            </div>
+          )}
+
+          <div className={s.fieldRow}>
+            <button
+              type="button"
+              className={s.btnPrimary}
+              disabled={!newName.trim()}
+              onClick={() => handleCreate('active')}
+            >
+              Добавить и активировать
+            </button>
+            <button
+              type="button"
+              className={s.btn}
+              disabled={!newName.trim()}
+              onClick={() => handleCreate('draft')}
+            >
+              Сохранить как черновик
+            </button>
+            <button
+              type="button"
+              className={s.btn}
+              onClick={() => {
+                setAdding(false)
+                onClearPreselect()
+              }}
+            >
+              {ru.settings.cancel}
+            </button>
+          </div>
+        </div>
+      )}
+
       <table className={s.table}>
         <thead>
           <tr>
             <th>{ru.settings.colName}</th>
             <th>{ru.settings.colType}</th>
+            <th>Статус</th>
             <th>{ru.settings.colCoords}</th>
             <th aria-label="Действия" />
           </tr>
         </thead>
         <tbody>
-          {(objects ?? []).map((o) =>
-            editing === o.id ? (
+          {allObjects.map((o) => {
+            const meta = o.id != null ? registryMeta[o.id] : undefined
+            const status: RegistryStatus = meta?.status ?? 'active'
+            const tpl = meta?.templateId
+              ? allTemplates.find((t) => t.id === meta.templateId)
+              : undefined
+            const isCustom = customObjects.some((c) => c.id === o.id)
+
+            return editing === o.id && !isCustom ? (
               <ObjectEditRow
                 key={o.id}
                 object={o}
@@ -129,21 +528,84 @@ function ObjectsTab() {
             ) : (
               <tr key={o.id} data-testid="object-row">
                 <td>
-                  {o.name}
+                  <strong>{o.name}</strong>
                   {saved === o.id && <span className={s.savedMark}> · {ru.settings.saved}</span>}
+                  {meta?.description && <div className={s.policyHint}>{meta.description}</div>}
+                  {meta?.properties && Object.keys(meta.properties).length > 0 && (
+                    <div className={s.propTags}>
+                      {Object.entries(meta.properties)
+                        .filter(([, val]) => val.trim() !== '')
+                        .map(([k, val]) => {
+                          const def = tpl?.properties.find((p) => p.key === k)
+                          return (
+                            <span key={k} className={s.propTag}>
+                              {def?.label ?? k}: {val}
+                              {def?.unit ? ` ${def.unit}` : ''}
+                            </span>
+                          )
+                        })}
+                    </div>
+                  )}
                 </td>
-                <td>{objectTypeLabel(o.object_type)}</td>
+                <td>{tpl?.name ?? objectTypeLabel(o.object_type)}</td>
+                <td>
+                  <span
+                    className={
+                      status === 'active'
+                        ? s.statusActive
+                        : status === 'draft'
+                          ? s.statusDraft
+                          : s.statusArchived
+                    }
+                  >
+                    {STATUS_LABELS[status]}
+                  </span>
+                </td>
                 <td className={s.hint}>
                   {o.lat?.toFixed(4)}, {o.lon?.toFixed(4)}
                 </td>
                 <td>
-                  <button type="button" className={s.btn} onClick={() => setEditing(o.id ?? null)}>
-                    {ru.settings.edit}
-                  </button>
+                  <div className={s.fieldRow}>
+                    {status !== 'active' ? (
+                      <button
+                        type="button"
+                        className={s.btnPrimary}
+                        onClick={() => o.id != null && setObjectStatus(o.id, 'active')}
+                      >
+                        Активировать
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className={s.btn}
+                        onClick={() => o.id != null && setObjectStatus(o.id, 'draft')}
+                      >
+                        В черновик
+                      </button>
+                    )}
+                    {status !== 'archived' && (
+                      <button
+                        type="button"
+                        className={s.btn}
+                        onClick={() => o.id != null && setObjectStatus(o.id, 'archived')}
+                      >
+                        В архив
+                      </button>
+                    )}
+                    {!isCustom && (
+                      <button
+                        type="button"
+                        className={s.btn}
+                        onClick={() => setEditing(o.id ?? null)}
+                      >
+                        {ru.settings.edit}
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
-            ),
-          )}
+            )
+          })}
         </tbody>
       </table>
 
@@ -207,6 +669,7 @@ function ObjectEditRow({
           ))}
         </select>
       </td>
+      <td />
       <td className={s.hint}>
         {o.lat?.toFixed(4)}, {o.lon?.toFixed(4)}
       </td>
