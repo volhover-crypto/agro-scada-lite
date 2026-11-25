@@ -337,6 +337,7 @@ export const ru = {
     typeGreenhouse: 'Теплица',
     typePumpStation: 'Насосная',
     typeField: 'Поле',
+    typeMeteo: 'Метеостанция',
     typeOther: 'Другое',
     policyNone: 'Без подтверждения',
     policyNoneHint: 'Команда уходит сразу',
