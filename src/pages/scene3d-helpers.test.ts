@@ -63,7 +63,7 @@ describe('baseStationPoints — две БС по краям сцены', () => {
   })
 })
 
-describe('labelTagsFor — 1–3 значения по приоритету (грунт→воздух→давление)', () => {
+describe('labelTagsFor — 1–3 значения по приоритету (грунт→воздух→давление) + добор (T20)', () => {
   const tag = (tagId: string, value: number | null): TagValueT =>
     ({
       tag_id: tagId,
@@ -90,8 +90,24 @@ describe('labelTagsFor — 1–3 значения по приоритету (г�
     expect(codes).toEqual([3, 1, 6])
   })
 
-  it('пост без значений → пусто', () => {
+  it('метеопост без кодов 3 и 6 — добирает доступные числовые теги (максимум 3, без дублей)', () => {
+    const t7 = (tagId: string, v: number | null) => ({ ...tag(tagId, v), post_id: 7 })
+    const out = labelTagsFor(7, [
+      t7('M/1/200/1', 18.2),
+      t7('M/2/200/1', 64),
+      t7('M/2/200/1', 64),
+      t7('M/8/200/1', 4.5),
+      t7('M/9/200/1', 12.0),
+      t7('M/10/200/1', null),
+    ])
+    expect(out).toHaveLength(3)
+    const ids = out.map((o) => o.tag.tag_id)
+    expect(ids).toEqual(['M/1/200/1', 'M/2/200/1', 'M/8/200/1'])
+  })
+
+  it('пост без числовых значений → пусто', () => {
     expect(labelTagsFor(99, [tag('A/1/150/1', 9.5)])).toEqual([])
+    expect(labelTagsFor(8, [{ ...tag('M/1/200/1', null), post_id: 8 }])).toEqual([])
   })
 })
 

@@ -8,13 +8,14 @@ import { ru } from '@/i18n/ru'
 
 type ChannelT = components['schemas']['Channel']
 
-/** Типы объектов (05 §10) */
+/** Типы объектов (05 §10, канонический список из 7 кодов — T20) */
 export const OBJECT_TYPES: Array<[string, string]> = [
   ['vineyard', ru.settings.typeVineyard],
   ['orchard', ru.settings.typeOrchard],
   ['greenhouse', ru.settings.typeGreenhouse],
   ['pump_station', ru.settings.typePumpStation],
   ['field', ru.settings.typeField],
+  ['meteo', ru.settings.typeMeteo],
   ['other', ru.settings.typeOther],
 ]
 

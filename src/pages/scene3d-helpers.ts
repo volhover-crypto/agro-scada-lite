@@ -34,7 +34,6 @@ export function metersFromLatLon(posts: PostT[]): Array<{ id: number; x: number;
   }))
 }
 
-/** Позиции постов в метрах: scene_x/scene_y, при NULL — из lat/lon (BR-2) */
 /** Координаты одного поста: scene_x/y или расчёт из lat/lon */
 function postCoords(
   p: PostT,
@@ -44,6 +43,7 @@ function postCoords(
   return fromLatLon.get(p.id ?? -1) ?? { x: 0, y: 0 }
 }
 
+/** Позиции постов в метрах: scene_x/scene_y, при NULL — из lat/lon (BR-2) */
 export function scenePositions(posts: PostT[]): ScenePosition[] {
   const fromLatLon = new Map(metersFromLatLon(posts).map((m) => [m.id, m]))
   return posts
@@ -86,21 +86,35 @@ export function statusColor(status: string): string {
   return map[status] ?? '#3E9A4A'
 }
 
-/** 1–3 ключевых значения для метки поста: грунт → воздух → давление (07 §3.1) */
+/** 1–3 ключевых значения для метки поста: приоритет [3, 1, 6], добор остальных числовых тегов (T20) */
 export function labelTagsFor(
   postId: number,
   current: TagValueT[],
 ): Array<{ tag: TagValueT; label: string }> {
   const priority = [3, 1, 6]
-  const mine = current.filter((t) => t.post_id === postId)
+  const mine = current.filter((t) => t.post_id === postId && typeof t.value === 'number')
   const out: Array<{ tag: TagValueT; label: string }> = []
+  const seen = new Set<string>()
+
   for (const code of priority) {
-    const tag = mine.find((t) => Number((t.tag_id ?? '').split('/')[1]) === code)
-    if (tag && typeof tag.value === 'number') {
+    const tag = mine.find(
+      (t) => Number((t.tag_id ?? '').split('/')[1]) === code && !seen.has(t.tag_id ?? ''),
+    )
+    if (tag) {
+      if (tag.tag_id) seen.add(tag.tag_id)
       out.push({ tag, label: tag.name ?? '' })
     }
-    if (out.length >= 3) break
+    if (out.length >= 3) return out
   }
+
+  for (const tag of mine) {
+    if (out.length >= 3) break
+    const key = tag.tag_id ?? ''
+    if (key && seen.has(key)) continue
+    if (key) seen.add(key)
+    out.push({ tag, label: tag.name ?? '' })
+  }
+
   return out
 }
 
