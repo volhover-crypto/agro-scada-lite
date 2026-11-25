@@ -106,6 +106,9 @@ const PUMP_COORDS: ReadonlyArray<readonly [number, number]> = [
   [44.5231, 33.5892],
 ]
 
+/** 5 уровней влажности грунта по глубине (см) */
+const SOIL_MOISTURE_LEVELS = [-10, -20, -30, -45, -60] as const
+
 export function displayName(code: number, level: number, no: number): string {
   const p = paramByCode(code)
   const lvl = level === 0 ? '' : level > 0 ? ` +${level} см` : ` ${level} см`
@@ -191,7 +194,7 @@ export function buildSeed(): Seed {
     })
   }
 
-  // Каналы 3–5 на пост (04 §1); привязка канала → пост 1:1 с модемом поста
+  // Каналы (04 §1); на постах виноградника — 5 уровней влажности грунта
   const channels: ChannelT[] = []
   const bindings: BindingT[] = []
   const tags: SeedTag[] = []
@@ -244,9 +247,9 @@ export function buildSeed(): Seed {
     const eui = devEui(i)
     addChannel(eui, 0x01, 150, 1, i)
     addChannel(eui, 0x02, 150, 1, i)
-    addChannel(eui, 0x03, -10, 1, i)
-    if (i <= 6) addChannel(eui, 0x03, -30, 1, i)
-    else addChannel(eui, 0x03, -60, 1, i)
+    for (const lvl of SOIL_MOISTURE_LEVELS) {
+      addChannel(eui, 0x03, lvl, 1, i)
+    }
     if (i > 6) addChannel(eui, 0x04, -10, 1, i)
     if (i === 1) addChannel(eui, 0x09, 150, 1, i)
     if (i === 2 || i === 3) addChannel(eui, 0x08, 100, 1, i)

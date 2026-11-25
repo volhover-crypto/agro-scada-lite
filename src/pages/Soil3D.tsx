@@ -22,7 +22,7 @@ import s from './post.module.css'
 
 /*
  * Soil3D — полупрозрачный 3D-разрез почвы с реалистичными горизонтами, травой,
- * корнями и динамическим фронтом влажности (07 §3.2).
+ * корнями, 5 уровнями влажности и контрастной визуализацией проникающей воды (07 §3.2).
  */
 
 export interface SoilDepthTag {
@@ -44,7 +44,7 @@ const BLOCK_PAD_CM = 10
 const CM_TO_UNIT = 0.1
 const BLOCK_W = 5.2
 const BLOCK_D = 4.2
-const PLAY_TICK_MS = 350
+const PLAY_TICK_MS = 320
 const PERIOD_MS: Record<SoilPeriod, number> = {
   '24h': 24 * 3_600_000,
   '7d': 7 * 24 * 3_600_000,
@@ -57,7 +57,7 @@ function clamp01(v: number): number {
 
 /**
  * Процедурная текстура боковой грани почвы: геологические слои +
- * динамический вертикальный градиент влажности/температуры.
+ * высококонтрастный вертикальный градиент проникающей воды.
  */
 function drawSoilTexture(
   canvas: HTMLCanvasElement,
@@ -73,7 +73,7 @@ function drawSoilTexture(
 
   ctx.clearRect(0, 0, w, h)
 
-  // 1. Геологические горизонты (волнистые слои как на референсе)
+  // 1. Геологические горизонты (волнистые слои)
   const horizons: Array<{ stop: number; color: string; amp: number; freq: number }> = [
     { stop: 0.0, color: '#6b4a33', amp: 4, freq: 2.2 },
     { stop: 0.14, color: '#9c6e4e', amp: 7, freq: 2.8 },
@@ -111,7 +111,7 @@ function drawSoilTexture(
     ctx.fill()
   }
 
-  // Тонкие прожилки и галька в нижнем слое
+  // Тонкие прожилки и галька
   ctx.strokeStyle = 'rgba(40, 28, 18, 0.22)'
   ctx.lineWidth = 1.5
   for (let k = 1; k < 14; k++) {
@@ -133,8 +133,8 @@ function drawSoilTexture(
     ctx.fill()
   }
 
-  // 2. Динамический вертикальный слой влажности / температуры по глубине
-  const bands = 32
+  // 2. Высококонтрастный динамический слой влажности / температуры по глубине
+  const bands = 40
   const bandH = h / bands
   for (let b = 0; b < bands; b++) {
     const depthCm = ((b + 0.5) / bands) * maxDepth
@@ -142,14 +142,19 @@ function drawSoilTexture(
     if (val == null) continue
 
     if (mode === 'moisture') {
-      // Усиленный контраст в рабочем диапазоне 15..35 %, чтобы динамика плеера была очевидна
-      const norm = clamp01((val - 15) / 20)
-      // Суше — лёгкий тёплый песочный оттенок; влажнее — насыщенный сине-голубой фронт
-      const r = Math.round(196 * (1 - norm) + 22 * norm)
-      const g = Math.round(150 * (1 - norm) + 122 * norm)
-      const bl = Math.round(92 * (1 - norm) + 224 * norm)
-      const alpha = 0.18 + norm * 0.48
-      ctx.fillStyle = `rgba(${r}, ${g}, ${bl}, ${alpha.toFixed(3)})`
+      const norm = clamp01((val - 12) / 28)
+      // Сухо (<18%) — тёплый песок; влажно (>24%) — яркий насыщенный сине-голубой фронт воды
+      if (norm < 0.35) {
+        const dryK = 1 - norm / 0.35
+        ctx.fillStyle = `rgba(214, 158, 86, ${(0.12 + dryK * 0.28).toFixed(3)})`
+      } else {
+        const wetK = (norm - 0.35) / 0.65
+        const r = Math.round(14 * (1 - wetK))
+        const g = Math.round(168 - wetK * 50)
+        const bl = 255
+        const alpha = 0.22 + wetK * 0.56
+        ctx.fillStyle = `rgba(${r}, ${g}, ${bl}, ${alpha.toFixed(3)})`
+      }
       ctx.fillRect(0, b * bandH, w, bandH + 1)
     } else {
       const span = tempRange.max - tempRange.min
@@ -157,8 +162,28 @@ function drawSoilTexture(
       const r = Math.round(47 * (1 - norm) + 198 * norm)
       const g = Math.round(127 * (1 - norm) + 40 * norm)
       const bl = Math.round(216 * (1 - norm) + 40 * norm)
-      ctx.fillStyle = `rgba(${r}, ${g}, ${bl}, 0.36)`
+      ctx.fillStyle = `rgba(${r}, ${g}, ${bl}, 0.44)`
       ctx.fillRect(0, b * bandH, w, bandH + 1)
+    }
+  }
+
+  // 3. Яркие прожилки просачивающейся воды на боковой грани при высокой влажности
+  if (mode === 'moisture') {
+    for (let sIdx = 0; sIdx < 9; sIdx++) {
+      const sx = ((sIdx + 0.5) / 9) * w
+      for (let b = 0; b < bands; b += 2) {
+        const depthCm = ((b + 0.5) / bands) * maxDepth
+        const val = valueAtDepth(readings, depthCm)
+        if (val == null || val < 22) continue
+        const wetK = clamp01((val - 22) / 18)
+        ctx.strokeStyle = `rgba(110, 224, 255, ${(0.25 + wetK * 0.65).toFixed(3)})`
+        ctx.lineWidth = 1.5 + wetK * 2
+        ctx.beginPath()
+        const y0 = b * bandH
+        ctx.moveTo(sx + Math.sin(b * 0.7 + sIdx) * 3, y0)
+        ctx.lineTo(sx + Math.sin((b + 2) * 0.7 + sIdx) * 3, y0 + bandH * 2)
+        ctx.stroke()
+      }
     }
   }
 }
@@ -442,7 +467,7 @@ function SoilSliderRow({
   )
 }
 
-/** Анимированные капли влаги внутри полупрозрачного разреза */
+/** Контрастные анимированные струи и капли проникающей воды внутри разреза */
 function MoistureDroplets({
   worldH,
   intensity,
@@ -455,18 +480,19 @@ function MoistureDroplets({
   const groupRef = useRef<THREE.Group>(null)
   const drops = useMemo(
     () =>
-      Array.from({ length: 18 }, (_, i) => ({
-        x: ((i * 1.37) % (BLOCK_W - 0.8)) - (BLOCK_W - 0.8) / 2,
-        z: ((i * 1.91) % (BLOCK_D - 0.8)) - (BLOCK_D - 0.8) / 2,
-        phase: (i * 0.23) % 1,
-        speed: 0.16 + (i % 4) * 0.05,
+      Array.from({ length: 28 }, (_, i) => ({
+        x: ((i * 1.19) % (BLOCK_W - 0.5)) - (BLOCK_W - 0.5) / 2,
+        z: ((i * 1.73) % (BLOCK_D - 0.5)) - (BLOCK_D - 0.5) / 2,
+        phase: (i * 0.17) % 1,
+        speed: 0.22 + (i % 5) * 0.06,
+        len: 0.24 + (i % 3) * 0.12,
       })),
     [],
   )
 
   useFrame((_, delta) => {
     if (!groupRef.current) return
-    const speedMul = playing ? 1.8 : 0.45
+    const speedMul = playing ? 2.1 : 0.65
     groupRef.current.children.forEach((child, i) => {
       const d = drops[i]!
       d.phase = (d.phase + delta * d.speed * speedMul) % 1
@@ -480,12 +506,14 @@ function MoistureDroplets({
     <group ref={groupRef} position={[BLOCK_W / 2, 0, BLOCK_D / 2]}>
       {drops.map((d, i) => (
         <mesh key={i} position={[d.x, -d.phase * worldH, d.z]}>
-          <sphereGeometry args={[0.075, 8, 8]} />
+          <capsuleGeometry args={[0.065 + intensity * 0.03, d.len, 4, 8]} />
           <meshStandardMaterial
-            color="#4ab3ff"
+            color="#38d6ff"
+            emissive="#009dff"
+            emissiveIntensity={0.85}
             transparent
-            opacity={0.35 + intensity * 0.5}
-            roughness={0.2}
+            opacity={0.55 + intensity * 0.4}
+            roughness={0.15}
           />
         </mesh>
       ))}
@@ -556,14 +584,14 @@ function RootSystem({ worldH }: { worldH: number }) {
           rotation={[st.rotX, 0, st.rotZ]}
         >
           <cylinderGeometry args={[0.045, 0.012, st.len, 6]} />
-          <meshLambertMaterial color="#6e4b30" transparent opacity={0.82} />
+          <meshLambertMaterial color="#6e4b30" transparent opacity={0.85} />
         </mesh>
       ))}
     </group>
   )
 }
 
-/** Полупрозрачный 3D-блок грунта с травой, слоями, внутренним объёмом влаги и датчиками */
+/** Полупрозрачный 3D-блок грунта с травой, слоями, контрастной водой и 5 датчиками */
 function SoilBlock({
   tags,
   readings,
@@ -610,35 +638,50 @@ function SoilBlock({
     textureRef.current.needsUpdate = true
   }, [readings, maxDepth, mode, tempRange])
 
-  // Высота и насыщенность внутреннего полупрозрачного слоя влаги
   const moistureNorm =
     avgValue == null
       ? 0
       : mode === 'moisture'
-        ? clamp01((avgValue - 14) / 22)
+        ? clamp01((avgValue - 12) / 28)
         : clamp01(
             tempRange.max > tempRange.min
               ? (avgValue - tempRange.min) / (tempRange.max - tempRange.min)
               : 0.5,
           )
-  const waterH = Math.max(0.25, worldH * (0.2 + moistureNorm * 0.72))
-  const innerColor = mode === 'moisture' ? '#2c8ee6' : profileColor(avgValue, mode, tempRange)
+  const waterH = Math.max(0.3, worldH * (0.14 + moistureNorm * 0.82))
+  const innerColor = mode === 'moisture' ? '#0095ff' : profileColor(avgValue, mode, tempRange)
 
   return (
     <group position={[-BLOCK_W / 2, halfH, -BLOCK_D / 2]}>
       <GrassCover />
 
-      {/* Внутренний динамический объём влаги, меняющий высоту и насыщенность */}
+      {/* Контрастный внутренний объём проникающей воды */}
       <mesh position={[BLOCK_W / 2, -worldH + waterH / 2, BLOCK_D / 2]}>
-        <boxGeometry args={[BLOCK_W - 0.24, waterH, BLOCK_D - 0.24]} />
+        <boxGeometry args={[BLOCK_W - 0.16, waterH, BLOCK_D - 0.16]} />
         <meshStandardMaterial
           color={innerColor}
+          emissive={mode === 'moisture' ? '#0066cc' : innerColor}
+          emissiveIntensity={0.45}
           transparent
-          opacity={mode === 'moisture' ? 0.16 + moistureNorm * 0.34 : 0.24}
-          roughness={0.25}
+          opacity={mode === 'moisture' ? 0.28 + moistureNorm * 0.46 : 0.32}
+          roughness={0.2}
           depthWrite={false}
         />
       </mesh>
+
+      {/* Верхняя светящаяся кромка фронта воды */}
+      {mode === 'moisture' && (
+        <mesh position={[BLOCK_W / 2, -worldH + waterH, BLOCK_D / 2]}>
+          <boxGeometry args={[BLOCK_W - 0.1, 0.08, BLOCK_D - 0.1]} />
+          <meshStandardMaterial
+            color="#66e0ff"
+            emissive="#00b8ff"
+            emissiveIntensity={0.9}
+            transparent
+            opacity={0.75}
+          />
+        </mesh>
+      )}
 
       {mode === 'moisture' && (
         <MoistureDroplets worldH={worldH} intensity={moistureNorm} playing={playing} />
@@ -646,13 +689,13 @@ function SoilBlock({
 
       <RootSystem worldH={worldH} />
 
-      {/* Основной полупрозрачный блок со слоистой текстурой грунта */}
+      {/* Полупрозрачный корпус грунта со слоями и градиентом влажности */}
       <mesh position={[BLOCK_W / 2, -halfH, BLOCK_D / 2]}>
         <boxGeometry args={[BLOCK_W, worldH, BLOCK_D]} />
-        <meshLambertMaterial map={sideTexture} transparent opacity={0.78} />
+        <meshLambertMaterial map={sideTexture} transparent opacity={0.56} />
       </mesh>
 
-      {/* Капсулы датчиков на передней грани с цветовой индикацией */}
+      {/* Капсулы 5 датчиков на передней грани */}
       {tags.map((t) => {
         const reading = readings.find((r) => r.depthCm === t.depthCm)
         const val = reading?.value ?? null
@@ -663,12 +706,12 @@ function SoilBlock({
             position={[BLOCK_W * 0.72, -t.depthCm * CM_TO_UNIT, BLOCK_D + 0.06]}
           >
             <mesh rotation={[0, 0, Math.PI / 2]}>
-              <capsuleGeometry args={[0.13, 0.52, 4, 8]} />
+              <capsuleGeometry args={[0.12, 0.48, 4, 8]} />
               <meshLambertMaterial color={val == null ? NO_DATA_COLOR : '#2f2f2d'} />
             </mesh>
-            <mesh position={[0.28, 0, 0.02]}>
+            <mesh position={[0.26, 0, 0.02]}>
               <sphereGeometry args={[0.11, 10, 10]} />
-              <meshStandardMaterial color={ringColor} emissive={ringColor} emissiveIntensity={0.45} />
+              <meshStandardMaterial color={ringColor} emissive={ringColor} emissiveIntensity={0.55} />
             </mesh>
           </group>
         )

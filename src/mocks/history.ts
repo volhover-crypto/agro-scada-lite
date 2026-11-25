@@ -2,9 +2,8 @@ import { strHash } from './util'
 
 /*
  * Детерминированный генератор значений тегов (04_MOCK_SPEC §2):
- * суточные синусоиды, полив 06:00 (+6 % за 1 ч), давление при работе насоса,
- * редкие дожди. valueAt(tagId, code, ms) стабилен для одного момента —
- * история 30 дней не хранится, а вычисляется по запросу /tags/history.
+ * суточные синусоиды, выраженные импульсы полива и просачивания по глубинам,
+ * давление при работе насоса, редкие дожди.
  */
 
 const HOUR = 3_600_000
@@ -30,17 +29,23 @@ export function pumpActive(ms: number): boolean {
   return (f >= 6 / 24 && f < 7.5 / 24) || (f >= 18 / 24 && f < 18.5 / 24)
 }
 
-/** Полив участка: +6 % за 1 ч после 06:00, затем плавный спад */
-function wateringBump(tagId: string, ms: number): number {
-  if (strHash(`${tagId}:water`) % 3 !== 0) return 0 // поливается ~треть участков
-  const f = fracOfDay(ms)
-  if (f < 6 / 24) return 0
-  const h = (f - 6 / 24) * 24
-  if (h <= 1) return 6 * h
-  return 6 * Math.exp(-(h - 1) / 8)
+/**
+ * Волна промачивания после полива с задержкой по глубине:
+ * верхний слой (-10 см) реагирует сразу, глубокие (-20..-60 см) — с запаздыванием
+ * и меньшей амплитудой, чтобы в плеере было видно просачивание воды сверху вниз.
+ */
+function percolationPulse(hourOfDay: number, startHour: number, depthCm: number, peak: number): number {
+  const lag = (depthCm / 60) * 3.5 // до 3.5 ч запаздывания на 60 см
+  let dt = hourOfDay - (startHour + lag)
+  if (dt < 0) dt += 24
+  if (dt > 11) return 0
+  const rise = Math.min(1, dt / 1.4)
+  const decay = Math.exp(-Math.max(0, dt - 1.4) / (3.2 + depthCm * 0.04))
+  const depthAtten = 1 - (depthCm / 120) * 0.35
+  return peak * rise * decay * depthAtten
 }
 
-export function valueAt(tagId: string, code: number, _levelCm: number, ms: number): number {
+export function valueAt(tagId: string, code: number, levelCm: number, ms: number): number {
   const f = fracOfDay(ms)
   const n = wobble(tagId, ms)
   switch (code) {
@@ -49,10 +54,17 @@ export function valueAt(tagId: string, code: number, _levelCm: number, ms: numbe
     case 0x02: // RH: 60–95 %, максимум к утру
       return +(77.5 - 17.5 * Math.sin((2 * Math.PI * (f - 0.583)) / 1) + n * 2).toFixed(1)
     case 0x03: {
-      // влажность грунта 18–35 %: медленное высыхание + полив
-      const dry = ((ms % (7 * DAY)) / (7 * DAY)) * 6
-      const v = 30 - dry + wateringBump(tagId, ms) + n * 0.8
-      return +Math.min(35, Math.max(16, v)).toFixed(1)
+      // влажность грунта 12–42 %: выраженный суточный цикл высыхания + 2 импульса полива с просачиванием
+      const depth = Math.abs(levelCm)
+      const h = f * 24
+      const dryWeek = ((ms % (7 * DAY)) / (7 * DAY)) * 5
+      // Дневное испарение сильнее в верхних слоях
+      const evap = Math.max(0, Math.sin(((h - 10) / 12) * Math.PI)) * (6.5 - depth * 0.06)
+      const morning = percolationPulse(h, 5.5, depth, 19)
+      const evening = percolationPulse(h, 17.0, depth, 14)
+      const base = 20 + (depth / 60) * 4 - dryWeek
+      const v = base - evap + morning + evening + n * 1.1
+      return +Math.min(42, Math.max(11, v)).toFixed(1)
     }
     case 0x04: // t грунта 8–12 °C, медленная
       return +(10 + 1.8 * Math.sin((2 * Math.PI * (ms / DAY - 0.25)) / 3) + n * 0.2).toFixed(1)
