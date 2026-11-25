@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { components } from '@/api/types.gen'
-import { sortRows, type SortKey } from './Table'
-import { dailyBars } from './Bar'
+import { sortRows, type SortKey } from './table-helpers'
+import { dailyBars } from './chart-helpers'
 import { toXY2 } from './chart-helpers'
 
 type TagValueT = components['schemas']['TagValue']

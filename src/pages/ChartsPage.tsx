@@ -5,7 +5,14 @@ import { api } from '@/api/client'
 import { useObjects } from '@/api/endpoints/objects'
 import { useTagValues } from '@/api/endpoints/tags'
 import { ru } from '@/i18n/ru'
-import { canAddTag, MAX_SERIES, type Agg, type Period } from '@/widgets/chart-helpers'
+import {
+  buildTree,
+  canAddTag,
+  filterTree,
+  MAX_SERIES,
+  type Agg,
+  type Period,
+} from '@/widgets/chart-helpers'
 import { ChartWidget } from '@/widgets/Chart'
 import { TableWidget } from '@/widgets/Table'
 import s from '@/widgets/widgets.module.css'
@@ -19,7 +26,6 @@ import s from '@/widgets/widgets.module.css'
  */
 
 type ChannelT = components['schemas']['Channel']
-type TagValueT = components['schemas']['TagValue']
 type WindowMode = 'inline' | 'modal' | 'maximized'
 
 const PERIODS: Array<[Period, string, number]> = [
@@ -316,7 +322,12 @@ export function ChartsPage() {
       </div>
 
       {windowMode !== 'inline' && (
-        <div className={s.chartModalBackdrop} role="dialog" aria-modal="true" aria-label="Окно графиков">
+        <div
+          className={s.chartModalBackdrop}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Окно графиков"
+        >
           <div
             className={
               windowMode === 'maximized'
@@ -345,10 +356,7 @@ export function ChartsPage() {
                 {ru.shell.navCharts}
                 {selected.length > 0 ? ` (${selected.length})` : ''}
               </span>
-              <div
-                className={s.winControls}
-                onPointerDown={(e) => e.stopPropagation()}
-              >
+              <div className={s.winControls} onPointerDown={(e) => e.stopPropagation()}>
                 <button
                   type="button"
                   className={s.winBtn}
@@ -361,11 +369,13 @@ export function ChartsPage() {
                 <button
                   type="button"
                   className={s.winBtn}
-                  title={windowMode === 'maximized' ? 'Восстановить размер' : 'Развернуть на весь экран'}
-                  aria-label={windowMode === 'maximized' ? 'Восстановить размер' : 'Развернуть на весь экран'}
-                  onClick={() =>
-                    setWindowMode((m) => (m === 'maximized' ? 'modal' : 'maximized'))
+                  title={
+                    windowMode === 'maximized' ? 'Восстановить размер' : 'Развернуть на весь экран'
                   }
+                  aria-label={
+                    windowMode === 'maximized' ? 'Восстановить размер' : 'Развернуть на весь экран'
+                  }
+                  onClick={() => setWindowMode((m) => (m === 'maximized' ? 'modal' : 'maximized'))}
                 >
                   {windowMode === 'maximized' ? '❐' : '☐'}
                 </button>
@@ -409,54 +419,4 @@ function useQueryChannels() {
 
 function allAssignedIds(channels: ChannelT[]): string[] {
   return channels.map((c) => c.tag_id ?? '').filter(Boolean)
-}
-
-export interface TreeGroup {
-  postKey: string
-  postLabel: string
-  params: Array<{ tagId: string; label: string }>
-}
-
-/** Дерево Объект → Пост → Параметр: канал даёт имя параметра, /tags/current — пост */
-export function buildTree(
-  channels: ChannelT[],
-  current: TagValueT[],
-  objects: components['schemas']['Object'][],
-): TreeGroup[] {
-  const byPost = new Map<string, { postLabel: string; params: Map<string, string> }>()
-  const objName = (objects ?? []).find((o) => o.id === 1)?.name ?? ''
-
-  for (const ch of channels) {
-    const tagId = ch.tag_id ?? ''
-    if (!tagId) continue
-    const tv = current.find((v) => v.tag_id === tagId)
-    const postId = tv?.post_id
-    if (postId == null) continue
-    const key = String(postId)
-    const label = `Пост ${postId} · ${objName}`
-    if (!byPost.has(key)) byPost.set(key, { postLabel: label, params: new Map() })
-    byPost
-      .get(key)!
-      .params.set(tagId, tv?.name ?? `${ch.param_name} ${ch.level_cm} см №${ch.sensor_no}`)
-  }
-  return [...byPost.entries()]
-    .sort((a, b) => a[1].postLabel.localeCompare(b[1].postLabel, 'ru'))
-    .map(([postKey, g]) => ({
-      postKey,
-      postLabel: g.postLabel,
-      params: [...g.params.entries()].map(([tagId, label]) => ({ tagId, label })),
-    }))
-}
-
-export function filterTree(tree: TreeGroup[], search: string): TreeGroup[] {
-  const q = search.trim().toLowerCase()
-  if (!q) return tree
-  return tree
-    .map((g) => ({
-      ...g,
-      params: g.params.filter(
-        (p) => p.label.toLowerCase().includes(q) || g.postLabel.toLowerCase().includes(q),
-      ),
-    }))
-    .filter((g) => g.params.length > 0)
 }

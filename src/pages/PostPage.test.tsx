@@ -7,7 +7,9 @@ import { queryClient } from '@/api/queryClient'
 import { server } from '@/mocks/node'
 import { applyScenario } from '@/mocks/scenarios'
 import { setSessionToken } from '@/state/session'
-import { bsLabel, batteryText, PostPage, soilTagsOf } from './PostPage'
+import { PostPage } from './PostPage'
+import { bsLabel, batteryText } from './post-helpers'
+import { soilTagsOf } from './soil3d-helpers'
 
 // EChartCanvas в jsdom падает (нет canvas-контекста, zrender) — стаб;
 // реальный график проверяется в e2e/post.spec.ts

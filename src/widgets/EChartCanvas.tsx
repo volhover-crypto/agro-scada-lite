@@ -1,4 +1,3 @@
-/* eslint-disable react-refresh/only-export-components -- обёртка ECharts без локального состояния */
 import { useEffect, useRef } from 'react'
 import * as echarts from 'echarts/core'
 import { BarChart, LineChart } from 'echarts/charts'

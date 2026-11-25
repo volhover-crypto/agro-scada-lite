@@ -8,7 +8,7 @@ import {
   type CreateScheduleResult,
 } from '@/api/endpoints/schedules'
 import { ru } from '@/i18n/ru'
-import { defLabel } from './RuleWizard'
+import { defLabel } from './rules-helpers'
 import { daysLabel, durationShort, isApprovedRule, ruleStatusLabel } from './rules-helpers'
 import s from './rules.module.css'
 

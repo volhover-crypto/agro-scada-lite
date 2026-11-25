@@ -12,7 +12,7 @@ import { useTagValues } from '@/api/endpoints/tags'
 import { ru } from '@/i18n/ru'
 import { DashboardView } from './ObjectDashboard'
 import { ObjectMap } from './ObjectMap'
-import { objectTypeLabel } from './overview-helpers'
+import { buildCatalog, linkStatusOf, objectTypeLabel } from './overview-helpers'
 import { ScenePostPanel } from './ScenePostPanel'
 import type { WidgetConfig } from '@/widgets/types'
 import s from './object.module.css'
@@ -49,18 +49,6 @@ function useQueryPosts(objectId: number) {
     queryFn: () => api.get<PostT[]>(`/posts?object_id=${objectId}`),
     enabled: Number.isFinite(objectId),
   })
-}
-
-/** Текст и «плохость» полосы связи объекта (D-19, агрегат по модемам) */
-export function linkStatusOf(total: number, online: number): { text: string; ok: boolean } {
-  if (total === 0) return { text: ru.objectPage.linkNone, ok: false }
-  if (online === total) return { text: ru.objectPage.linkOk, ok: true }
-  return {
-    text: ru.objectPage.linkPartial
-      .replace('{online}', String(online))
-      .replace('{total}', String(total)),
-    ok: false,
-  }
 }
 
 function LinkBadge({ ok, text }: { ok: boolean; text: string }) {
@@ -119,26 +107,6 @@ function useQueryChannels() {
     queryKey: ['channels', 'assigned'],
     queryFn: () => api.get<ChannelT[]>('/channels?status=assigned'),
   })
-}
-
-/** Каталог тегов для конструктора: пост и имя из /tags/current, параметр из канала */
-/** Каталог тегов для конструктора: пост и имя из /tags/current, параметр из канала
- *  (используется также мастером правил T14) */
-export function buildCatalog(
-  channels: ChannelT[],
-  current: TagValueT[],
-): Array<{ tagId: string; label: string }> {
-  return channels
-    .map((ch) => {
-      const tv = current.find((v) => v.tag_id === ch.tag_id)
-      if (tv?.post_id == null) return null
-      const level = ch.level_cm ? ` ${ch.level_cm} см` : ''
-      return {
-        tagId: ch.tag_id ?? '',
-        label: `Пост ${tv.post_id} · ${tv.name ?? `${ch.param_name}${level}`}`,
-      }
-    })
-    .filter((x): x is { tagId: string; label: string } => x != null && x.tagId !== '')
 }
 
 export function ObjectPage() {

@@ -9,7 +9,7 @@ import { useTagValues } from '@/api/endpoints/tags'
 import { ru } from '@/i18n/ru'
 import { formatDateTimeRu } from '@/lib/time'
 import { RuleWizard, type RuleDraft, type TagOption } from './RuleWizard'
-import { buildCatalog } from './ObjectPage'
+import { buildCatalog } from './overview-helpers'
 import { isApprovedRule, ruleStatusLabel, scheduleSummary } from './rules-helpers'
 import s from './rules.module.css'
 

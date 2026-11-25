@@ -3,7 +3,7 @@ import type { EChartsCoreOption } from 'echarts/core'
 import { useTagHistory, useTagValues } from '@/api/endpoints/tags'
 import { WidgetFrame } from './WidgetFrame'
 import { EChartCanvas } from './EChartCanvas'
-import { periodRange, toXY2, type Agg } from './chart-helpers'
+import { dailyBars, periodRange, toXY2, type Agg } from './chart-helpers'
 
 /*
  * Bar — столбцы/диаграмма (07 §2): агрегат по периоду (сутки/неделя),
@@ -19,34 +19,7 @@ export interface BarWidgetProps {
   agg?: Agg | 'sum'
 }
 
-const DAY_MS = 86_400_000
 const BAR_COLORS = ['#2F7FD8', '#6B8E23', '#D97706', '#0D9488']
-
-/** Дневные суммы/средние по точкам (для осадков — сумма за сутки) */
-export function dailyBars(
-  points: Array<[string, number, string]>,
-  mode: 'sum' | 'avg' = 'sum',
-): Array<[number, number]> {
-  const byDay = new Map<number, number[]>()
-  for (const [ts, v] of points) {
-    if (typeof v !== 'number') continue
-    const day = Math.floor(Date.parse(ts) / DAY_MS) * DAY_MS
-    const arr = byDay.get(day) ?? []
-    arr.push(v)
-    byDay.set(day, arr)
-  }
-  return [...byDay.entries()]
-    .map(
-      ([day, vals]) =>
-        [
-          day,
-          mode === 'sum'
-            ? vals.reduce((a, b) => a + b, 0)
-            : vals.reduce((a, b) => a + b, 0) / vals.length,
-        ] as [number, number],
-    )
-    .sort((a, b) => a[0] - b[0])
-}
 
 export function BarWidget({ title, tags, period = '7d', agg = 'sum' }: BarWidgetProps) {
   const current = useTagValues(tags, 60_000)

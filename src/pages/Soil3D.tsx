@@ -3,7 +3,6 @@ import { Canvas } from '@react-three/fiber'
 import { useTagHistory } from '@/api/endpoints/tags'
 import { toMskIso } from '@/lib/time'
 import { ru } from '@/i18n/ru'
-import { formatNumber } from '@/widgets/quality'
 import {
   NO_DATA_COLOR,
   isoScreenY,
@@ -12,6 +11,8 @@ import {
   timeGrid,
   valueAt,
   valueAtDepth,
+  sensorLabel,
+  sliderTimeLabel,
   type DepthReading,
   type SeriesPoint,
 } from './soil3d-helpers'
@@ -54,20 +55,6 @@ const PERIOD_MS: Record<SoilPeriod, number> = {
 }
 /** Шаг сетки истории (enum контракта): 24 ч — 15m, 7 д — 1h */
 const PERIOD_STEP: Record<SoilPeriod, '15m' | '1h'> = { '24h': '15m', '7d': '1h' }
-
-/** Подпись датчика: «−10 см · 27,4 %» (число — ru-локаль) */
-export function sensorLabel(depthCm: number, value: number | null, unit: string): string {
-  const v = value == null ? ru.widgets.noData.toLowerCase() : `${formatNumber(value)} ${unit}`
-  return `−${depthCm} см · ${v}`
-}
-
-/** Время на подписи ползунка: 24 ч — «09:15», 7 д — «20.11 09:15» */
-export function sliderTimeLabel(ms: number, period: SoilPeriod): string {
-  const d = new Date(ms)
-  const hhmm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-  if (period === '24h') return hhmm
-  return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')} ${hhmm}`
-}
 
 export function Soil3D({ moisture, temperature }: Soil3DProps) {
   const [mode, setMode] = useState<SoilMode>('moisture')

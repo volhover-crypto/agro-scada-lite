@@ -4,7 +4,9 @@
  * (до 8 тегов, 2 оси Y по единицам, прогноз пунктиром).
  */
 
+import type { EChartsCoreOption } from 'echarts/core'
 import type { components } from '@/api/types.gen'
+import type { WidgetThreshold } from './types'
 
 type SeriesT = components['schemas']['Series']
 type TagValueT = components['schemas']['TagValue']
@@ -108,4 +110,174 @@ export function buildLineSeries(
 /** Пары [ms, value] → отсортированные точки (для Bar) */
 export function toXY2(pairs: Array<[number, number]>): Array<[number, number]> {
   return [...pairs].sort((a, b) => a[0] - b[0])
+}
+
+/*
+ * Ниже — хелперы, перенесённые из Chart.tsx / Bar.tsx / ChartsPage.tsx (этап 8, §8.7):
+ * файл компонента должен экспортировать только компоненты (react-refresh).
+ */
+
+const DAY_MS = 86_400_000
+
+/** Дневные суммы/средние по точкам (для осадков — сумма за сутки) — из Bar.tsx */
+export function dailyBars(
+  points: Array<[string, number, string]>,
+  mode: 'sum' | 'avg' = 'sum',
+): Array<[number, number]> {
+  const byDay = new Map<number, number[]>()
+  for (const [ts, v] of points) {
+    if (typeof v !== 'number') continue
+    const day = Math.floor(Date.parse(ts) / DAY_MS) * DAY_MS
+    const arr = byDay.get(day) ?? []
+    arr.push(v)
+    byDay.set(day, arr)
+  }
+  return [...byDay.entries()]
+    .map(
+      ([day, vals]) =>
+        [
+          day,
+          mode === 'sum'
+            ? vals.reduce((a, b) => a + b, 0)
+            : vals.reduce((a, b) => a + b, 0) / vals.length,
+        ] as [number, number],
+    )
+    .sort((a, b) => a[0] - b[0])
+}
+
+export interface TreeGroup {
+  postKey: string
+  postLabel: string
+  params: Array<{ tagId: string; label: string }>
+}
+
+/** Дерево Объект → Пост → Параметр: канал даёт имя параметра, /tags/current — пост — из ChartsPage */
+export function buildTree(
+  channels: components['schemas']['Channel'][],
+  current: TagValueT[],
+  objects: components['schemas']['Object'][],
+): TreeGroup[] {
+  const byPost = new Map<string, { postLabel: string; params: Map<string, string> }>()
+  const objName = (objects ?? []).find((o) => o.id === 1)?.name ?? ''
+
+  for (const ch of channels) {
+    const tagId = ch.tag_id ?? ''
+    if (!tagId) continue
+    const tv = current.find((v) => v.tag_id === tagId)
+    const postId = tv?.post_id
+    if (postId == null) continue
+    const key = String(postId)
+    const label = `Пост ${postId} · ${objName}`
+    if (!byPost.has(key)) byPost.set(key, { postLabel: label, params: new Map() })
+    byPost
+      .get(key)!
+      .params.set(tagId, tv?.name ?? `${ch.param_name} ${ch.level_cm} см №${ch.sensor_no}`)
+  }
+  return [...byPost.entries()]
+    .sort((a, b) => a[1].postLabel.localeCompare(b[1].postLabel, 'ru'))
+    .map(([postKey, g]) => ({
+      postKey,
+      postLabel: g.postLabel,
+      params: [...g.params.entries()].map(([tagId, label]) => ({ tagId, label })),
+    }))
+}
+
+export function filterTree(tree: TreeGroup[], search: string): TreeGroup[] {
+  const q = search.trim().toLowerCase()
+  if (!q) return tree
+  return tree
+    .map((g) => ({
+      ...g,
+      params: g.params.filter(
+        (p) => p.label.toLowerCase().includes(q) || g.postLabel.toLowerCase().includes(q),
+      ),
+    }))
+    .filter((g) => g.params.length > 0)
+}
+
+const SERIES_COLORS = ['#2F7FD8', '#6B8E23', '#D97706', '#0D9488', '#7C3AED', '#DC2626']
+const AXIS_COLORS = ['#2F7FD8', '#5E6D2C']
+
+/** Опция ECharts по сериям и порогам — чистая, покрыта тестами (в т.ч. на init) — из Chart.tsx */
+export function buildChartOption(
+  series: ReturnType<typeof buildLineSeries>,
+  thresholds: WidgetThreshold[],
+): EChartsCoreOption {
+  const units = [...new Set(series.map((sr) => sr.unit).filter(Boolean))].slice(0, 2)
+  return {
+    animationDuration: 250,
+    color: SERIES_COLORS,
+    grid: { left: 12, right: 12, top: 38, bottom: 8, containLabel: true },
+    legend: {
+      top: 0,
+      type: 'scroll',
+      icon: 'roundRect',
+      itemWidth: 12,
+      itemHeight: 8,
+      textStyle: { color: '#3A3A38', fontSize: 12 },
+    },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: 'rgba(255, 253, 249, 0.96)',
+      borderColor: '#DDD5C7',
+      textStyle: { color: '#262624', fontSize: 12 },
+    },
+    xAxis: {
+      type: 'time',
+      axisLine: { lineStyle: { color: '#D6CEC0' } },
+      axisTick: { show: false },
+      axisLabel: { color: '#6E6A63', fontSize: 11, hideOverlap: true },
+      splitLine: { show: false },
+    },
+    yAxis: units.map((u, i) => ({
+      type: 'value',
+      name: u || undefined,
+      nameTextStyle: { color: AXIS_COLORS[i], fontSize: 11, padding: [0, 0, 4, 0] },
+      position: i === 0 ? ('left' as const) : ('right' as const),
+      splitNumber: 4,
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { color: '#6E6A63', fontSize: 11 },
+      splitLine: {
+        show: i === 0,
+        lineStyle: { color: '#EAE2D3', type: 'dashed' as const },
+      },
+    })),
+    dataZoom: [{ type: 'inside', filterMode: 'none' }],
+    series: series.map((sr, idx) => {
+      const color = sr.kind === 'forecast' ? '#2F7FD8' : SERIES_COLORS[idx % SERIES_COLORS.length]
+      return {
+        name: sr.name,
+        type: 'line' as const,
+        yAxisIndex: sr.axisIndex,
+        smooth: 0.25,
+        showSymbol: false,
+        symbolSize: 6,
+        connectNulls: true,
+        lineStyle: {
+          width: 2.5,
+          type: sr.kind === 'forecast' ? ('dashed' as const) : ('solid' as const),
+        },
+        itemStyle: { color },
+        areaStyle: sr.kind === 'forecast' ? undefined : { opacity: 0.1 },
+        data: toXY(sr.points),
+        markLine:
+          thresholds.length > 0 && series[0] === sr
+            ? {
+                silent: true,
+                symbol: 'none',
+                data: thresholds.map((t) => ({
+                  yAxis: t.value,
+                  lineStyle: {
+                    color: t.color === 'alarm' ? '#C62828' : '#C9A100',
+                    type: 'dashed' as const,
+                    width: 1.5,
+                  },
+                  label: { formatter: String(t.value), color: '#5A5650', fontSize: 11 },
+                })),
+              }
+            : undefined,
+      }
+    }),
+  }
 }

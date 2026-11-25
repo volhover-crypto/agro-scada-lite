@@ -55,7 +55,8 @@ export function DevicePage() {
   const valid = Number.isFinite(id)
 
   const commands = useCommands(valid ? id : null, 10)
-  const history = (commands.data ?? []) as CommandT[]
+  // react-hooks/exhaustive-deps: стабильная ссылка для useMemo ниже (этап 8, §8.7)
+  const history = useMemo(() => (commands.data ?? []) as CommandT[], [commands.data])
 
   const { data: actuators, refetch: refetchActuators } = useActuators(
     undefined,

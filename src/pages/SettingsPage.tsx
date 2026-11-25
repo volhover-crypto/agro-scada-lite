@@ -84,7 +84,12 @@ function resolveInitialTabs(section?: string): {
   if (section === 'templates') return { main: 'templates', acc: 'objects', ops: 'commands' }
   if (section === 'binding') return { main: 'accounting', acc: 'binding', ops: 'commands' }
   if (section === 'posts') return { main: 'accounting', acc: 'posts', ops: 'commands' }
-  if (section === 'commands' || section === 'alarms' || section === 'notify' || section === 'simulator') {
+  if (
+    section === 'commands' ||
+    section === 'alarms' ||
+    section === 'notify' ||
+    section === 'simulator'
+  ) {
     return { main: 'operations', acc: 'objects', ops: section }
   }
   return { main: 'accounting', acc: 'objects', ops: 'commands' }
@@ -348,7 +353,12 @@ function TemplatesTreeTab({ onUseTemplate }: { onUseTemplate: (templateId: strin
       const isOpen = q ? true : (expanded[grp.id] ?? true)
       const directItems = templates.filter((t) => t.groupId === grp.id && matchesSearch(t))
       const subRows = renderGroupBranch(grp.id, depth + 1)
-      if (q && directItems.length === 0 && subRows.length === 0 && !grp.name.toLowerCase().includes(q)) {
+      if (
+        q &&
+        directItems.length === 0 &&
+        subRows.length === 0 &&
+        !grp.name.toLowerCase().includes(q)
+      ) {
         continue
       }
 
@@ -464,7 +474,9 @@ function TemplatesTreeTab({ onUseTemplate }: { onUseTemplate: (templateId: strin
 
       {mode === 'item' && (
         <div className={s.formBox}>
-          <strong>{editingId ? 'Редактирование элемента справочника' : 'Новый элемент справочника'}</strong>
+          <strong>
+            {editingId ? 'Редактирование элемента справочника' : 'Новый элемент справочника'}
+          </strong>
           <div className={s.formGrid}>
             <label className={s.field}>
               Наименование
@@ -673,7 +685,8 @@ function ObjectsTab({
         <div>
           <h2 className={s.stepTitle}>Реестр объектов хозяйства</h2>
           <p className={s.hint}>
-            Добавляйте объекты хозяйства из справочника шаблонов и управляйте их выводом в мониторинг.
+            Добавляйте объекты хозяйства из справочника шаблонов и управляйте их выводом в
+            мониторинг.
           </p>
         </div>
         <button

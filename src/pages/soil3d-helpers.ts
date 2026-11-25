@@ -4,6 +4,13 @@
  * Тестируются напрямую (soil3d-helpers.test.ts).
  */
 
+import { ru } from '@/i18n/ru'
+import { formatNumber } from '@/widgets/quality'
+import type { components } from '@/api/types.gen'
+import type { SoilDepthTag, SoilPeriod } from './Soil3D'
+
+type ChannelT = components['schemas']['Channel']
+
 export interface SeriesPoint {
   ts: number
   value: number | null
@@ -180,4 +187,38 @@ export function labelTopPx(
   const h = maxDepthCm * 0.1
   const screenY = isoScreenY([1.2, h / 2 - depthCm * 0.1, 1.5])
   return canvasH / 2 - screenY * zoom
+}
+
+/*
+ * Ниже — подписи, перенесённые из Soil3D.tsx / PostPage.tsx (этап 8, §8.7):
+ * файл компонента экспортирует только компоненты.
+ */
+
+/** Подпись датчика: «−10 см · 27,4 %» (число — ru-локаль) — из Soil3D.tsx */
+export function sensorLabel(depthCm: number, value: number | null, unit: string): string {
+  const v = value == null ? ru.widgets.noData.toLowerCase() : `${formatNumber(value)} ${unit}`
+  return `−${depthCm} см · ${v}`
+}
+
+/** Время на подписи ползунка: 24 ч — «09:15», 7 д — «20.11 09:15» — из Soil3D.tsx */
+export function sliderTimeLabel(ms: number, period: SoilPeriod): string {
+  const d = new Date(ms)
+  const hhmm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  if (period === '24h') return hhmm
+  return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')} ${hhmm}`
+}
+
+/** soil3d: грунтовые каналы поста по видам (07 §3.2 — level_cm < 0) — из PostPage.tsx */
+export function soilTagsOf(
+  channels: ChannelT[],
+  tagIds: Set<string>,
+  code: number,
+): SoilDepthTag[] {
+  return channels
+    .filter(
+      (ch) =>
+        ch.param_code === code && (ch.level_cm ?? 0) < 0 && ch.tag_id && tagIds.has(ch.tag_id),
+    )
+    .map((ch) => ({ tagId: ch.tag_id!, depthCm: -(ch.level_cm ?? 0), unit: ch.unit ?? '' }))
+    .sort((a, b) => a.depthCm - b.depthCm)
 }

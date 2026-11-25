@@ -12,7 +12,8 @@ import { formatDateTimeRu } from '@/lib/time'
 import { CardWidget } from '@/widgets/Card'
 import { ChartWidget } from '@/widgets/Chart'
 import { formatNumber } from '@/widgets/quality'
-import type { SoilDepthTag } from './Soil3D'
+import { soilTagsOf } from './soil3d-helpers'
+import { bsLabel, batteryText } from './post-helpers'
 import s from './post.module.css'
 
 /*
@@ -55,30 +56,6 @@ function useQueryChannels() {
     queryKey: ['channels', 'assigned'],
     queryFn: () => api.get<ChannelT[]>('/channels?status=assigned'),
   })
-}
-
-/** soil3d: грунтовые каналы поста по видам (07 §3.2 — level_cm < 0) */
-export function soilTagsOf(
-  channels: ChannelT[],
-  tagIds: Set<string>,
-  code: number,
-): SoilDepthTag[] {
-  return channels
-    .filter(
-      (ch) =>
-        ch.param_code === code && (ch.level_cm ?? 0) < 0 && ch.tag_id && tagIds.has(ch.tag_id),
-    )
-    .map((ch) => ({ tagId: ch.tag_id!, depthCm: -(ch.level_cm ?? 0), unit: ch.unit ?? '' }))
-    .sort((a, b) => a.depthCm - b.depthCm)
-}
-
-/** Ключ базовой станции: 'bs1' → 'БС-1' (формат receptions мока; BR-FE-1) */
-export function bsLabel(key: string): string {
-  return key.replace(/^bs/i, 'БС-')
-}
-
-export function batteryText(batMv: number | null | undefined): string {
-  return batMv == null ? '—' : `${formatNumber(batMv / 1000)} В`
 }
 
 /** Все данные страницы поста: запросы + производные списки (PostPage — только вид) */

@@ -4,6 +4,10 @@
  */
 
 import type { components } from '@/api/types.gen'
+import { ru } from '@/i18n/ru'
+
+type ChannelT = components['schemas']['Channel']
+type TagValueT = components['schemas']['TagValue']
 
 type ObjectT = components['schemas']['Object']
 type PostT = components['schemas']['Post']
@@ -62,4 +66,40 @@ export function objectTypeLabel(type: string | undefined): string {
     other: 'Объект',
   }
   return map[type ?? ''] ?? 'Объект'
+}
+
+/*
+ * Ниже — хелперы, перенесённые из ObjectPage.tsx (этап 8, §8.7):
+ * файл компонента экспортирует только компоненты.
+ */
+
+/** Текст и «плохость» полосы связи объекта (D-19, агрегат по модемам) */
+export function linkStatusOf(total: number, online: number): { text: string; ok: boolean } {
+  if (total === 0) return { text: ru.objectPage.linkNone, ok: false }
+  if (online === total) return { text: ru.objectPage.linkOk, ok: true }
+  return {
+    text: ru.objectPage.linkPartial
+      .replace('{online}', String(online))
+      .replace('{total}', String(total)),
+    ok: false,
+  }
+}
+
+/** Каталог тегов для конструктора: пост и имя из /tags/current, параметр из канала
+ *  (используется также мастером правил T14) */
+export function buildCatalog(
+  channels: ChannelT[],
+  current: TagValueT[],
+): Array<{ tagId: string; label: string }> {
+  return channels
+    .map((ch) => {
+      const tv = current.find((v) => v.tag_id === ch.tag_id)
+      if (tv?.post_id == null) return null
+      const level = ch.level_cm ? ` ${ch.level_cm} см` : ''
+      return {
+        tagId: ch.tag_id ?? '',
+        label: `Пост ${tv.post_id} · ${tv.name ?? `${ch.param_name}${level}`}`,
+      }
+    })
+    .filter((x): x is { tagId: string; label: string } => x != null && x.tagId !== '')
 }

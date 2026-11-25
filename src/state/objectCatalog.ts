@@ -2,13 +2,7 @@ import { create } from 'zustand'
 import type { components } from '@/api/types.gen'
 
 export type ObjectTypeCode =
-  | 'vineyard'
-  | 'orchard'
-  | 'greenhouse'
-  | 'pump_station'
-  | 'field'
-  | 'meteo'
-  | 'other'
+  'vineyard' | 'orchard' | 'greenhouse' | 'pump_station' | 'field' | 'meteo' | 'other'
 
 export type RegistryStatus = 'draft' | 'active' | 'archived'
 

@@ -1,13 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { components } from '@/api/types.gen'
 import { ru } from '@/i18n/ru'
-import {
-  RULE_OPS,
-  ruleSummary,
-  wizardStepValid,
-  type RuleAction,
-  type RuleCondition,
-} from './rules-helpers'
+import { RULE_OPS, ruleSummary, wizardStepValid } from './rules-helpers'
 import s from './rules.module.css'
 
 /*
@@ -21,15 +15,10 @@ import s from './rules.module.css'
 type RuleT = components['schemas']['Rule']
 type CommandDefT = components['schemas']['CommandDef']
 
-export interface RuleDraft {
-  name: string
-  condition: RuleCondition
-  action: RuleAction
-  hysteresis: number
-  minPauseS: number
-  onNoData: 'skip' | 'fallback_schedule'
-  fallbackScheduleId: number | null
-}
+import { draftFromRule, defLabel } from './rules-helpers'
+import type { RuleDraft } from './rules-helpers'
+
+export type { RuleDraft }
 
 export interface TagOption {
   tagId: string
@@ -44,27 +33,6 @@ const EMPTY_DRAFT: RuleDraft = {
   minPauseS: 3600,
   onNoData: 'skip',
   fallbackScheduleId: null,
-}
-
-export function draftFromRule(rule: RuleT): RuleDraft {
-  const c = (rule.condition ?? {}) as Partial<RuleCondition>
-  const a = (rule.action ?? {}) as Partial<RuleAction>
-  return {
-    name: rule.name ?? '',
-    condition: {
-      tag_id: c.tag_id ?? '',
-      op: c.op ?? '<',
-      value: c.value ?? 0,
-    },
-    action: {
-      command_def_id: a.command_def_id ?? 0,
-      duration_s: a.duration_s ?? 1800,
-    },
-    hysteresis: rule.hysteresis ?? 1,
-    minPauseS: rule.min_pause_s ?? 3600,
-    onNoData: rule.on_no_data === 'fallback_schedule' ? 'fallback_schedule' : 'skip',
-    fallbackScheduleId: rule.fallback_schedule_id ?? null,
-  }
 }
 
 export interface RuleWizardProps {
@@ -425,18 +393,4 @@ function StepSummary({
       {nameRequired && <p className={s.warnBanner}>{ru.rules.nameRequired}</p>}
     </>
   )
-}
-
-/** Подпись команды в шаге 2: «Клапан 1 · ВКЛЮЧИТЬ» */
-export function defLabel(d: CommandDefT, actuatorNames: Record<number, string>): string {
-  const action =
-    d.action === 'on'
-      ? ru.device.turnOn
-      : d.action === 'off'
-        ? ru.device.turnOff
-        : d.action === 'open'
-          ? ru.device.open
-          : ru.device.close
-  const name = actuatorNames[d.actuator_id ?? 0] ?? `${ru.rules.defPrefix} ${d.actuator_id ?? '—'}`
-  return `${name} · ${action}`
 }
