@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Canvas } from '@react-three/fiber'
+import { Canvas, useFrame } from '@react-three/fiber'
+import * as THREE from 'three'
 import { useTagHistory } from '@/api/endpoints/tags'
 import { toMskIso } from '@/lib/time'
 import { ru } from '@/i18n/ru'
+import { formatNumber } from '@/widgets/quality'
 import {
   NO_DATA_COLOR,
   isoScreenY,
@@ -19,12 +21,8 @@ import {
 import s from './post.module.css'
 
 /*
- * Soil3D — разрез почвы с профилем влажности (07 §3.2): изометрический блок
- * грунта, слои залиты градиентом по значениям между датчиками, капсулы датчиков
- * в 3D, подписи «−10 см · 27,4 %» — HTML-слой справа (позиция = доля глубины;
- * drei Html даёт гонку unmount при перерендере React 19 — см. DECISIONS).
- * Ползунок по истории 24 ч / 7 д с воспроизведением, второй режим — температура
- * грунта. Меньше 2 глубин — подсказка. История — один запрос /tags/history.
+ * Soil3D — полупрозрачный 3D-разрез почвы с реалистичными горизонтами, травой,
+ * корнями и динамическим фронтом влажности (07 §3.2).
  */
 
 export interface SoilDepthTag {
@@ -42,19 +40,128 @@ export interface Soil3DProps {
   temperature: SoilDepthTag[]
 }
 
-/** Глубина низа блока: глубже самого глубокого датчика на 10 см */
 const BLOCK_PAD_CM = 10
-/** Мир: 1 единица = 10 см */
 const CM_TO_UNIT = 0.1
-const BLOCK_W = 6
-const BLOCK_D = 3
-const PLAY_TICK_MS = 400
+const BLOCK_W = 5.2
+const BLOCK_D = 4.2
+const PLAY_TICK_MS = 350
 const PERIOD_MS: Record<SoilPeriod, number> = {
   '24h': 24 * 3_600_000,
   '7d': 7 * 24 * 3_600_000,
 }
-/** Шаг сетки истории (enum контракта): 24 ч — 15m, 7 д — 1h */
 const PERIOD_STEP: Record<SoilPeriod, '15m' | '1h'> = { '24h': '15m', '7d': '1h' }
+
+function clamp01(v: number): number {
+  return v < 0 ? 0 : v > 1 ? 1 : v
+}
+
+/**
+ * Процедурная текстура боковой грани почвы: геологические слои +
+ * динамический вертикальный градиент влажности/температуры.
+ */
+function drawSoilTexture(
+  canvas: HTMLCanvasElement,
+  readings: DepthReading[],
+  maxDepth: number,
+  mode: SoilMode,
+  tempRange: { min: number; max: number },
+): void {
+  const w = canvas.width
+  const h = canvas.height
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+
+  ctx.clearRect(0, 0, w, h)
+
+  // 1. Геологические горизонты (волнистые слои как на референсе)
+  const horizons: Array<{ stop: number; color: string; amp: number; freq: number }> = [
+    { stop: 0.0, color: '#6b4a33', amp: 4, freq: 2.2 },
+    { stop: 0.14, color: '#9c6e4e', amp: 7, freq: 2.8 },
+    { stop: 0.24, color: '#cfb08c', amp: 6, freq: 3.1 },
+    { stop: 0.34, color: '#8f9e59', amp: 5, freq: 2.5 },
+    { stop: 0.44, color: '#dfd1b4', amp: 7, freq: 3.0 },
+    { stop: 0.56, color: '#3f3b3d', amp: 6, freq: 2.1 },
+    { stop: 0.68, color: '#b99c7c', amp: 8, freq: 3.4 },
+    { stop: 0.82, color: '#4c4d4a', amp: 5, freq: 2.6 },
+    { stop: 1.0, color: '#646964', amp: 4, freq: 2.0 },
+  ]
+
+  for (let i = 0; i < horizons.length - 1; i++) {
+    const top = horizons[i]!
+    const bot = horizons[i + 1]!
+    const y0 = top.stop * h
+    const y1 = bot.stop * h
+
+    ctx.beginPath()
+    ctx.moveTo(0, y0)
+    for (let x = 0; x <= w; x += 8) {
+      const wave =
+        Math.sin((x / w) * Math.PI * top.freq + i * 1.3) * top.amp +
+        Math.cos((x / w) * Math.PI * (top.freq * 1.7) + i) * (top.amp * 0.4)
+      ctx.lineTo(x, y0 + wave)
+    }
+    ctx.lineTo(w, y1 + 12)
+    ctx.lineTo(0, y1 + 12)
+    ctx.closePath()
+
+    const grad = ctx.createLinearGradient(0, y0, 0, y1)
+    grad.addColorStop(0, top.color)
+    grad.addColorStop(1, bot.color)
+    ctx.fillStyle = grad
+    ctx.fill()
+  }
+
+  // Тонкие прожилки и галька в нижнем слое
+  ctx.strokeStyle = 'rgba(40, 28, 18, 0.22)'
+  ctx.lineWidth = 1.5
+  for (let k = 1; k < 14; k++) {
+    const yBase = (k / 14) * h
+    ctx.beginPath()
+    for (let x = 0; x <= w; x += 12) {
+      const y = yBase + Math.sin((x / w) * Math.PI * 4 + k) * 4
+      if (x === 0) ctx.moveTo(x, y)
+      else ctx.lineTo(x, y)
+    }
+    ctx.stroke()
+  }
+  ctx.fillStyle = 'rgba(215, 210, 198, 0.32)'
+  for (let p = 0; p < 28; p++) {
+    const px = ((p * 53) % (w - 16)) + 8
+    const py = h * 0.8 + ((p * 29) % Math.max(10, Math.floor(h * 0.18)))
+    ctx.beginPath()
+    ctx.ellipse(px, py, 3 + (p % 4), 2 + (p % 3), (p % 5) * 0.4, 0, Math.PI * 2)
+    ctx.fill()
+  }
+
+  // 2. Динамический вертикальный слой влажности / температуры по глубине
+  const bands = 32
+  const bandH = h / bands
+  for (let b = 0; b < bands; b++) {
+    const depthCm = ((b + 0.5) / bands) * maxDepth
+    const val = valueAtDepth(readings, depthCm)
+    if (val == null) continue
+
+    if (mode === 'moisture') {
+      // Усиленный контраст в рабочем диапазоне 15..35 %, чтобы динамика плеера была очевидна
+      const norm = clamp01((val - 15) / 20)
+      // Суше — лёгкий тёплый песочный оттенок; влажнее — насыщенный сине-голубой фронт
+      const r = Math.round(196 * (1 - norm) + 22 * norm)
+      const g = Math.round(150 * (1 - norm) + 122 * norm)
+      const bl = Math.round(92 * (1 - norm) + 224 * norm)
+      const alpha = 0.18 + norm * 0.48
+      ctx.fillStyle = `rgba(${r}, ${g}, ${bl}, ${alpha.toFixed(3)})`
+      ctx.fillRect(0, b * bandH, w, bandH + 1)
+    } else {
+      const span = tempRange.max - tempRange.min
+      const norm = span > 0 ? clamp01((val - tempRange.min) / span) : 0.5
+      const r = Math.round(47 * (1 - norm) + 198 * norm)
+      const g = Math.round(127 * (1 - norm) + 40 * norm)
+      const bl = Math.round(216 * (1 - norm) + 40 * norm)
+      ctx.fillStyle = `rgba(${r}, ${g}, ${bl}, 0.36)`
+      ctx.fillRect(0, b * bandH, w, bandH + 1)
+    }
+  }
+}
 
 export function Soil3D({ moisture, temperature }: Soil3DProps) {
   const [mode, setMode] = useState<SoilMode>('moisture')
@@ -64,7 +171,6 @@ export function Soil3D({ moisture, temperature }: Soil3DProps) {
 
   const allTags = useMemo(() => [...moisture, ...temperature].slice(0, 8), [moisture, temperature])
 
-  // окно истории стабильно на период (иначе queryKey плавает — урок Card, T07)
   const range = useMemo(
     () => ({ from: toMskIso(Date.now() - PERIOD_MS[period]), to: toMskIso() }),
     [period],
@@ -72,7 +178,6 @@ export function Soil3D({ moisture, temperature }: Soil3DProps) {
   const ids = useMemo(() => allTags.map((t) => t.tagId).filter(Boolean), [allTags])
   const hist = useTagHistory(ids, { ...range, agg: 'avg', step: PERIOD_STEP[period] })
 
-  // точки контракта [iso, value, quality] → {ts, value} для хелперов
   const series = useMemo<Record<string, SeriesPoint[]>>(() => {
     const map: Record<string, SeriesPoint[]> = {}
     for (const sr of (hist.data ?? []) as Array<{ tag_id?: string; points?: unknown[] }>) {
@@ -97,7 +202,6 @@ export function Soil3D({ moisture, temperature }: Soil3DProps) {
     return { min: Math.min(...nums), max: Math.max(...nums) }
   }, [temperature, series])
 
-  // воспроизведение: шаг по сетке до конца, там стоп (07 §3.2 «анимация смены профиля»)
   useEffect(() => {
     if (!playing) return
     const timer = window.setInterval(() => {
@@ -110,7 +214,6 @@ export function Soil3D({ moisture, temperature }: Soil3DProps) {
     return () => window.clearInterval(timer)
   }, [playing])
 
-  // смена периода пересобирает сетку — ползунок к началу
   useEffect(() => {
     setIdx(0)
     setPlaying(false)
@@ -119,15 +222,44 @@ export function Soil3D({ moisture, temperature }: Soil3DProps) {
   const tempDisabled = temperature.length < 2
   const ts = grid[Math.min(idx, Math.max(grid.length - 1, 0))]
 
-  // геометрия вида: зум, чтобы блок (в мировых единицах) влез в канвас 300 px
+  const currentReadings = useMemo<DepthReading[]>(
+    () =>
+      active.map((t) => ({
+        depthCm: t.depthCm,
+        value: valueAt(series[t.tagId] ?? [], ts ?? Number.NaN),
+      })),
+    [active, series, ts],
+  )
+
+  const avgValue = useMemo(() => {
+    const valid = currentReadings.map((r) => r.value).filter((v): v is number => v != null)
+    if (valid.length === 0) return null
+    return valid.reduce((acc, v) => acc + v, 0) / valid.length
+  }, [currentReadings])
+
+  const avgUnit = active[0]?.unit ?? (mode === 'moisture' ? '%' : '°C')
+  const avgColor = profileColor(avgValue, mode, tempRange)
+  const avgFillPct =
+    avgValue == null
+      ? 0
+      : mode === 'moisture'
+        ? Math.round(clamp01(avgValue / 45) * 100)
+        : Math.round(
+            clamp01(
+              tempRange.max > tempRange.min
+                ? (avgValue - tempRange.min) / (tempRange.max - tempRange.min)
+                : 0.5,
+            ) * 100,
+          )
+
   const maxDepth = (active[active.length - 1]?.depthCm ?? 20) + BLOCK_PAD_CM
   const worldH = maxDepth * CM_TO_UNIT
   const corners = [0, BLOCK_W].flatMap((dx) =>
-    [-worldH / 2, worldH / 2].flatMap((y) =>
+    [-worldH / 2 - 0.8, worldH / 2 + 0.9].flatMap((y) =>
       [0, BLOCK_D].map((dz) => isoScreenY([dx - BLOCK_W / 2, y, dz - BLOCK_D / 2])),
     ),
   )
-  const zoom = Math.min(40, (300 * 0.9) / (Math.max(...corners) - Math.min(...corners)))
+  const zoom = Math.min(34, (320 * 0.88) / (Math.max(...corners) - Math.min(...corners)))
 
   return (
     <section className={s.soil} aria-label={ru.soil3d.title}>
@@ -151,10 +283,35 @@ export function Soil3D({ moisture, temperature }: Soil3DProps) {
           <div className={s.soilCanvasWrap}>
             <Canvas orthographic camera={{ position: [11, 7, 11], zoom, near: 0.1, far: 100 }}>
               <color attach="background" args={['#EFE6D6']} />
-              <ambientLight intensity={1.1} />
-              <directionalLight position={[8, 14, 6]} intensity={0.7} />
-              <SoilBlock tags={active} series={series} ts={ts} mode={mode} tempRange={tempRange} />
+              <ambientLight intensity={1.25} />
+              <directionalLight position={[10, 16, 8]} intensity={0.85} />
+              <directionalLight position={[-8, 6, -6]} intensity={0.35} />
+              <SoilBlock
+                tags={active}
+                readings={currentReadings}
+                avgValue={avgValue}
+                playing={playing}
+                mode={mode}
+                tempRange={tempRange}
+              />
             </Canvas>
+
+            {/* Крупный динамический показатель средней влажности / температуры */}
+            <div className={s.soilAvgCard} data-testid="soil-avg">
+              <span className={s.soilAvgTitle}>
+                {mode === 'moisture' ? 'Средняя влажность' : 'Средняя температура'}
+              </span>
+              <span className={s.soilAvgValue} style={{ color: avgColor }}>
+                {avgValue == null ? '—' : `${formatNumber(avgValue)} ${avgUnit}`}
+              </span>
+              <div className={s.soilAvgBar}>
+                <div
+                  className={s.soilAvgBarFill}
+                  style={{ width: `${avgFillPct}%`, backgroundColor: avgColor }}
+                />
+              </div>
+            </div>
+
             <div className={s.soilLabels}>
               {[...active]
                 .sort((a, b) => a.depthCm - b.depthCm)
@@ -162,7 +319,7 @@ export function Soil3D({ moisture, temperature }: Soil3DProps) {
                   <div
                     key={t.tagId}
                     className={s.soilLabel}
-                    style={{ top: `${labelTopPx(t.depthCm, maxDepth, zoom, 300)}px` }}
+                    style={{ top: `${labelTopPx(t.depthCm, maxDepth, zoom, 320)}px` }}
                   >
                     {sensorLabel(
                       t.depthCm,
@@ -192,7 +349,6 @@ export function Soil3D({ moisture, temperature }: Soil3DProps) {
   )
 }
 
-/** Переключатели режима заливки (влажность/температура) и периода истории */
 function SoilControls({
   mode,
   period,
@@ -246,7 +402,6 @@ function SoilControls({
   )
 }
 
-/** Ползунок времени с воспроизведением и меткой текущего момента */
 function SoilSliderRow({
   playing,
   canPlay,
@@ -287,55 +442,235 @@ function SoilSliderRow({
   )
 }
 
-/** Блок грунта: слои-боксы между границами глубин + капсулы на передней грани */
+/** Анимированные капли влаги внутри полупрозрачного разреза */
+function MoistureDroplets({
+  worldH,
+  intensity,
+  playing,
+}: {
+  worldH: number
+  intensity: number
+  playing: boolean
+}) {
+  const groupRef = useRef<THREE.Group>(null)
+  const drops = useMemo(
+    () =>
+      Array.from({ length: 18 }, (_, i) => ({
+        x: ((i * 1.37) % (BLOCK_W - 0.8)) - (BLOCK_W - 0.8) / 2,
+        z: ((i * 1.91) % (BLOCK_D - 0.8)) - (BLOCK_D - 0.8) / 2,
+        phase: (i * 0.23) % 1,
+        speed: 0.16 + (i % 4) * 0.05,
+      })),
+    [],
+  )
+
+  useFrame((_, delta) => {
+    if (!groupRef.current) return
+    const speedMul = playing ? 1.8 : 0.45
+    groupRef.current.children.forEach((child, i) => {
+      const d = drops[i]!
+      d.phase = (d.phase + delta * d.speed * speedMul) % 1
+      child.position.y = -d.phase * worldH
+    })
+  })
+
+  if (intensity <= 0.05) return null
+
+  return (
+    <group ref={groupRef} position={[BLOCK_W / 2, 0, BLOCK_D / 2]}>
+      {drops.map((d, i) => (
+        <mesh key={i} position={[d.x, -d.phase * worldH, d.z]}>
+          <sphereGeometry args={[0.075, 8, 8]} />
+          <meshStandardMaterial
+            color="#4ab3ff"
+            transparent
+            opacity={0.35 + intensity * 0.5}
+            roughness={0.2}
+          />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+/** Процедурный травяной покров на верхней грани блока */
+function GrassCover() {
+  const blades = useMemo(() => {
+    const arr: Array<{ x: number; z: number; h: number; tiltX: number; tiltZ: number; color: string }> = []
+    const palette = ['#4b8624', '#5c9d2e', '#70b338', '#3d711c', '#82bf42']
+    const cols = 11
+    const rows = 9
+    for (let ix = 0; ix < cols; ix++) {
+      for (let iz = 0; iz < rows; iz++) {
+        const seed = ix * 31 + iz * 17
+        const jitterX = (((seed * 13) % 10) - 5) * 0.03
+        const jitterZ = (((seed * 19) % 10) - 5) * 0.03
+        arr.push({
+          x: 0.25 + (ix / (cols - 1)) * (BLOCK_W - 0.5) + jitterX,
+          z: 0.25 + (iz / (rows - 1)) * (BLOCK_D - 0.5) + jitterZ,
+          h: 0.45 + ((seed * 7) % 5) * 0.1,
+          tiltX: (((seed * 11) % 7) - 3) * 0.06,
+          tiltZ: (((seed * 23) % 7) - 3) * 0.06,
+          color: palette[seed % palette.length]!,
+        })
+      }
+    }
+    return arr
+  }, [])
+
+  return (
+    <group position={[0, 0.02, 0]}>
+      <mesh position={[BLOCK_W / 2, 0.04, BLOCK_D / 2]}>
+        <boxGeometry args={[BLOCK_W + 0.04, 0.08, BLOCK_D + 0.04]} />
+        <meshLambertMaterial color="#4e7d28" />
+      </mesh>
+      {blades.map((b, i) => (
+        <mesh key={i} position={[b.x, b.h / 2 + 0.05, b.z]} rotation={[b.tiltX, 0, b.tiltZ]}>
+          <coneGeometry args={[0.11, b.h, 4]} />
+          <meshLambertMaterial color={b.color} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+/** Стилизованные корни внутри и снизу полупрозрачного разреза */
+function RootSystem({ worldH }: { worldH: number }) {
+  const strands = useMemo(
+    () => [
+      { x: BLOCK_W * 0.3, z: BLOCK_D * 0.35, len: worldH * 0.65, rotZ: 0.14, rotX: 0.08 },
+      { x: BLOCK_W * 0.45, z: BLOCK_D * 0.6, len: worldH * 0.72, rotZ: -0.12, rotX: -0.1 },
+      { x: BLOCK_W * 0.65, z: BLOCK_D * 0.4, len: worldH * 0.6, rotZ: 0.18, rotX: -0.06 },
+      { x: BLOCK_W * 0.38, z: BLOCK_D * 0.72, len: worldH * 0.45, rotZ: -0.22, rotX: 0.14 },
+      { x: BLOCK_W * 0.58, z: BLOCK_D * 0.68, len: worldH * 0.52, rotZ: 0.1, rotX: 0.16 },
+    ],
+    [worldH],
+  )
+
+  return (
+    <group>
+      {strands.map((st, i) => (
+        <mesh
+          key={i}
+          position={[st.x, -worldH + st.len * 0.28, st.z]}
+          rotation={[st.rotX, 0, st.rotZ]}
+        >
+          <cylinderGeometry args={[0.045, 0.012, st.len, 6]} />
+          <meshLambertMaterial color="#6e4b30" transparent opacity={0.82} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+/** Полупрозрачный 3D-блок грунта с травой, слоями, внутренним объёмом влаги и датчиками */
 function SoilBlock({
   tags,
-  series,
-  ts,
+  readings,
+  avgValue,
+  playing,
   mode,
   tempRange,
 }: {
   tags: SoilDepthTag[]
-  series: Record<string, SeriesPoint[]>
-  ts: number | undefined
+  readings: DepthReading[]
+  avgValue: number | null
+  playing: boolean
   mode: SoilMode
   tempRange: { min: number; max: number }
 }) {
-  const readings: DepthReading[] = tags.map((t) => ({
-    depthCm: t.depthCm,
-    value: valueAt(series[t.tagId] ?? [], ts ?? Number.NaN),
-  }))
   const sorted = [...readings].sort((a, b) => a.depthCm - b.depthCm)
   const maxDepth = (sorted[sorted.length - 1]?.depthCm ?? 20) + BLOCK_PAD_CM
-  const halfH = (maxDepth * CM_TO_UNIT) / 2
+  const worldH = maxDepth * CM_TO_UNIT
+  const halfH = worldH / 2
 
-  // границы слоёв: поверхность 0, глубины датчиков, дно; блок центрирован по Y
-  const bounds = [0, ...sorted.map((r) => r.depthCm), maxDepth]
+  const textureRef = useRef<THREE.CanvasTexture | null>(null)
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+
+  const sideTexture = useMemo(() => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 256
+    canvas.height = 256
+    canvasRef.current = canvas
+    const tex = new THREE.CanvasTexture(canvas)
+    tex.colorSpace = THREE.SRGBColorSpace
+    textureRef.current = tex
+    return tex
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      textureRef.current?.dispose()
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!canvasRef.current || !textureRef.current) return
+    drawSoilTexture(canvasRef.current, readings, maxDepth, mode, tempRange)
+    textureRef.current.needsUpdate = true
+  }, [readings, maxDepth, mode, tempRange])
+
+  // Высота и насыщенность внутреннего полупрозрачного слоя влаги
+  const moistureNorm =
+    avgValue == null
+      ? 0
+      : mode === 'moisture'
+        ? clamp01((avgValue - 14) / 22)
+        : clamp01(
+            tempRange.max > tempRange.min
+              ? (avgValue - tempRange.min) / (tempRange.max - tempRange.min)
+              : 0.5,
+          )
+  const waterH = Math.max(0.25, worldH * (0.2 + moistureNorm * 0.72))
+  const innerColor = mode === 'moisture' ? '#2c8ee6' : profileColor(avgValue, mode, tempRange)
 
   return (
     <group position={[-BLOCK_W / 2, halfH, -BLOCK_D / 2]}>
-      {bounds.slice(0, -1).map((top, i) => {
-        const bottom = bounds[i + 1]!
-        const mid = (top + bottom) / 2
-        const color = profileColor(valueAtDepth(readings, mid), mode, tempRange)
-        return (
-          <mesh key={`slab${i}`} position={[BLOCK_W / 2, -mid * CM_TO_UNIT, BLOCK_D / 2]}>
-            <boxGeometry args={[BLOCK_W, (bottom - top) * CM_TO_UNIT, BLOCK_D]} />
-            <meshLambertMaterial color={color} />
-          </mesh>
-        )
-      })}
+      <GrassCover />
+
+      {/* Внутренний динамический объём влаги, меняющий высоту и насыщенность */}
+      <mesh position={[BLOCK_W / 2, -worldH + waterH / 2, BLOCK_D / 2]}>
+        <boxGeometry args={[BLOCK_W - 0.24, waterH, BLOCK_D - 0.24]} />
+        <meshStandardMaterial
+          color={innerColor}
+          transparent
+          opacity={mode === 'moisture' ? 0.16 + moistureNorm * 0.34 : 0.24}
+          roughness={0.25}
+          depthWrite={false}
+        />
+      </mesh>
+
+      {mode === 'moisture' && (
+        <MoistureDroplets worldH={worldH} intensity={moistureNorm} playing={playing} />
+      )}
+
+      <RootSystem worldH={worldH} />
+
+      {/* Основной полупрозрачный блок со слоистой текстурой грунта */}
+      <mesh position={[BLOCK_W / 2, -halfH, BLOCK_D / 2]}>
+        <boxGeometry args={[BLOCK_W, worldH, BLOCK_D]} />
+        <meshLambertMaterial map={sideTexture} transparent opacity={0.78} />
+      </mesh>
+
+      {/* Капсулы датчиков на передней грани с цветовой индикацией */}
       {tags.map((t) => {
-        const value = valueAt(series[t.tagId] ?? [], ts ?? Number.NaN)
+        const reading = readings.find((r) => r.depthCm === t.depthCm)
+        const val = reading?.value ?? null
+        const ringColor = val == null ? NO_DATA_COLOR : profileColor(val, mode, tempRange)
         return (
-          <mesh
+          <group
             key={`cap${t.tagId}`}
-            rotation={[0, 0, Math.PI / 2]}
-            position={[BLOCK_W * 0.7, -t.depthCm * CM_TO_UNIT, BLOCK_D + 0.05]}
+            position={[BLOCK_W * 0.72, -t.depthCm * CM_TO_UNIT, BLOCK_D + 0.06]}
           >
-            <capsuleGeometry args={[0.12, 0.5, 4, 8]} />
-            <meshLambertMaterial color={value == null ? NO_DATA_COLOR : '#3a3a38'} />
-          </mesh>
+            <mesh rotation={[0, 0, Math.PI / 2]}>
+              <capsuleGeometry args={[0.13, 0.52, 4, 8]} />
+              <meshLambertMaterial color={val == null ? NO_DATA_COLOR : '#2f2f2d'} />
+            </mesh>
+            <mesh position={[0.28, 0, 0.02]}>
+              <sphereGeometry args={[0.11, 10, 10]} />
+              <meshStandardMaterial color={ringColor} emissive={ringColor} emissiveIntensity={0.45} />
+            </mesh>
+          </group>
         )
       })}
     </group>
