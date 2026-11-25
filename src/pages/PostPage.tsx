@@ -1,4 +1,12 @@
-import { lazy, Suspense, useMemo } from 'react'
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router'
 import type { components } from '@/api/types.gen'
@@ -12,6 +20,7 @@ import { formatDateTimeRu } from '@/lib/time'
 import { CardWidget } from '@/widgets/Card'
 import { ChartWidget } from '@/widgets/Chart'
 import { formatNumber } from '@/widgets/quality'
+import ws from '@/widgets/widgets.module.css'
 import { soilTagsOf } from './soil3d-helpers'
 import { bsLabel, batteryText } from './post-helpers'
 import s from './post.module.css'
@@ -19,8 +28,8 @@ import s from './post.module.css'
 /*
  * Страница поста (05 §4): шапка — название, участок, модем (батарея В, запас
  * SNR дБ, RSSI по БС, последняя связь); текущие значения (карточки), soil3d
- * (если ≥ 2 глубины), график 24 ч, исполнители (мини-панели), тревоги поста.
- * Управление исполнителями — на страницах устройств (T12), ack тревог — T13.
+ * (если ≥ 2 глубины), график 24 ч (с режимом «В окне» как на экране Графики),
+ * исполнители (мини-панели), тревоги поста.
  */
 
 type PostT = components['schemas']['Post']
@@ -28,6 +37,7 @@ type ChannelT = components['schemas']['Channel']
 type TagValueT = components['schemas']['TagValue']
 type ModemT = components['schemas']['Modem']
 type ActuatorT = components['schemas']['Actuator']
+type WindowMode = 'inline' | 'modal' | 'maximized'
 
 /** Цвет чипа приоритета тревоги (06: --alarm-p1..p4) */
 const PRIORITY_CLASS: Record<number, string> = {
@@ -42,6 +52,19 @@ const Soil3DLazy = lazy(() => import('./Soil3D').then((m) => ({ default: m.Soil3
 
 const PARAM_SOIL_MOISTURE = 0x03
 const PARAM_SOIL_TEMP = 0x04
+
+function defaultModalBox() {
+  const vw = typeof window !== 'undefined' ? window.innerWidth : 1280
+  const vh = typeof window !== 'undefined' ? window.innerHeight : 800
+  const w = Math.min(Math.round(vw * 0.78), 1120)
+  const h = Math.min(Math.round(vh * 0.72), 680)
+  return {
+    x: Math.max(16, Math.round((vw - w) / 2)),
+    y: Math.max(16, Math.round((vh - h) / 2)),
+    w,
+    h,
+  }
+}
 
 function useQueryPosts(objectId: number) {
   return useQuery({
@@ -193,14 +216,7 @@ export function PostPage() {
         <Soil3DLazy moisture={moisture} temperature={temperature} />
       </Suspense>
 
-      <section aria-label={ru.postPage.chart24h}>
-        <h2 className={s.blockTitle}>{ru.postPage.chart24h}</h2>
-        {chartTags.length > 0 ? (
-          <ChartWidget title={ru.postPage.chart24h} tags={chartTags} period="24h" agg="avg" />
-        ) : (
-          <p className={s.empty}>{ru.widgets.noData}</p>
-        )}
-      </section>
+      <PostChartSection postName={post.name ?? ''} chartTags={chartTags} />
 
       <section aria-label={ru.postPage.executors}>
         <h2 className={s.blockTitle}>{ru.postPage.executors}</h2>
@@ -236,6 +252,183 @@ export function PostPage() {
         )}
       </section>
     </main>
+  )
+}
+
+/** Секция графика 24 ч с механикой «В окне» (перетаскивание, ресайз, свернуть/развернуть/закрыть) */
+function PostChartSection({ postName, chartTags }: { postName: string; chartTags: string[] }) {
+  const [windowMode, setWindowMode] = useState<WindowMode>('inline')
+  const [modalBox, setModalBox] = useState(defaultModalBox)
+  const dragRef = useRef<{
+    kind: 'move' | 'resize'
+    startX: number
+    startY: number
+    box: { x: number; y: number; w: number; h: number }
+  } | null>(null)
+
+  useEffect(() => {
+    if (windowMode === 'inline') return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setWindowMode('inline')
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [windowMode])
+
+  useEffect(() => {
+    function onMove(e: PointerEvent) {
+      const d = dragRef.current
+      if (!d) return
+      const dx = e.clientX - d.startX
+      const dy = e.clientY - d.startY
+      if (d.kind === 'move') {
+        const maxX = Math.max(0, window.innerWidth - 120)
+        const maxY = Math.max(0, window.innerHeight - 60)
+        setModalBox({
+          ...d.box,
+          x: Math.min(maxX, Math.max(0, d.box.x + dx)),
+          y: Math.min(maxY, Math.max(0, d.box.y + dy)),
+        })
+      } else {
+        const maxW = window.innerWidth - d.box.x - 8
+        const maxH = window.innerHeight - d.box.y - 8
+        setModalBox({
+          ...d.box,
+          w: Math.min(maxW, Math.max(460, d.box.w + dx)),
+          h: Math.min(maxH, Math.max(300, d.box.h + dy)),
+        })
+      }
+    }
+    function onUp() {
+      dragRef.current = null
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+    }
+  }, [])
+
+  function startDrag(kind: 'move' | 'resize', e: ReactPointerEvent) {
+    if (windowMode !== 'modal') return
+    e.preventDefault()
+    dragRef.current = { kind, startX: e.clientX, startY: e.clientY, box: modalBox }
+  }
+
+  function openModal() {
+    setModalBox(defaultModalBox())
+    setWindowMode('modal')
+  }
+
+  const chartElement = (
+    <ChartWidget title={ru.postPage.chart24h} tags={chartTags} period="24h" agg="avg" />
+  )
+
+  return (
+    <section aria-label={ru.postPage.chart24h}>
+      <div className={s.soilHead}>
+        <h2 className={s.blockTitle}>{ru.postPage.chart24h}</h2>
+        {chartTags.length > 0 && (
+          <button
+            type="button"
+            className={ws.presetBtn}
+            title="Открыть график в отдельном окне"
+            onClick={openModal}
+          >
+            ❐ В окне
+          </button>
+        )}
+      </div>
+
+      {chartTags.length === 0 ? (
+        <p className={s.empty}>{ru.widgets.noData}</p>
+      ) : (
+        windowMode === 'inline' && chartElement
+      )}
+
+      {windowMode !== 'inline' && chartTags.length > 0 && (
+        <div
+          className={ws.chartModalBackdrop}
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Окно графика: ${postName}`}
+        >
+          <div
+            className={
+              windowMode === 'maximized'
+                ? `${ws.chartModalWindow} ${ws.chartModalMaximized}`
+                : ws.chartModalWindow
+            }
+            style={
+              windowMode === 'modal'
+                ? {
+                    left: `${modalBox.x}px`,
+                    top: `${modalBox.y}px`,
+                    width: `${modalBox.w}px`,
+                    height: `${modalBox.h}px`,
+                  }
+                : undefined
+            }
+          >
+            <div
+              className={ws.winTitleBar}
+              onPointerDown={(e) => startDrag('move', e)}
+              onDoubleClick={() =>
+                setWindowMode((m) => (m === 'maximized' ? 'modal' : 'maximized'))
+              }
+            >
+              <span className={ws.winTitle}>
+                {postName ? `${postName} — ${ru.postPage.chart24h}` : ru.postPage.chart24h}
+              </span>
+              <div className={ws.winControls} onPointerDown={(e) => e.stopPropagation()}>
+                <button
+                  type="button"
+                  className={ws.winBtn}
+                  title="Свернуть"
+                  aria-label="Свернуть окно"
+                  onClick={() => setWindowMode('inline')}
+                >
+                  —
+                </button>
+                <button
+                  type="button"
+                  className={ws.winBtn}
+                  title={
+                    windowMode === 'maximized' ? 'Восстановить размер' : 'Развернуть на весь экран'
+                  }
+                  aria-label={
+                    windowMode === 'maximized' ? 'Восстановить размер' : 'Развернуть на весь экран'
+                  }
+                  onClick={() => setWindowMode((m) => (m === 'maximized' ? 'modal' : 'maximized'))}
+                >
+                  {windowMode === 'maximized' ? '❐' : '☐'}
+                </button>
+                <button
+                  type="button"
+                  className={`${ws.winBtn} ${ws.winBtnClose}`}
+                  title="Закрыть"
+                  aria-label="Закрыть окно"
+                  onClick={() => setWindowMode('inline')}
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            <div className={ws.chartModalBody}>{chartElement}</div>
+
+            {windowMode === 'modal' && (
+              <div
+                className={ws.winResizeHandle}
+                title="Изменить размер"
+                onPointerDown={(e) => startDrag('resize', e)}
+              />
+            )}
+          </div>
+        </div>
+      )}
+    </section>
   )
 }
 
