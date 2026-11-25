@@ -3,9 +3,10 @@ import type { components } from '@/api/types.gen'
 
 export type ObjectTypeCode =
   | 'vineyard'
-  | 'pump_station'
-  | 'greenhouse'
   | 'orchard'
+  | 'greenhouse'
+  | 'pump_station'
+  | 'field'
   | 'meteo'
   | 'other'
 
@@ -97,6 +98,19 @@ export const SYSTEM_TEMPLATES: ObjectTemplate[] = [
     properties: [
       { key: 'area_ha', label: 'Площадь (га)', defaultValue: '' },
       { key: 'crop', label: 'Культура / сорт', defaultValue: '' },
+      { key: 'irrigation', label: 'Тип полива', defaultValue: '' },
+    ],
+  },
+  {
+    id: 'tpl-field',
+    groupId: 'grp-agro',
+    name: 'Поле',
+    object_type: 'field',
+    description: 'Открытый грунт: контроль влажности почвы, осадков и режимов полива.',
+    scope: 'system',
+    properties: [
+      { key: 'area_ha', label: 'Площадь (га)', defaultValue: '' },
+      { key: 'crop', label: 'Культура', defaultValue: '' },
       { key: 'irrigation', label: 'Тип полива', defaultValue: '' },
     ],
   },

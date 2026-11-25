@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, type ReactNode } from 'react'
+import { useMemo, useRef, type ReactNode } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { Html, Line, OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
@@ -18,9 +18,9 @@ import {
 } from './scene3d-helpers'
 
 /*
- * 3D-сцена объекта (07 §3.1): изометрия (ортокамера, вращение ±45°, зум, сброс),
- * светлая поверхность, ряды виноградника с листвой, детализированные посты «ТОЧКА»,
- * пунктирные линии связи к БС. Подробная карточка поста — только при выделении.
+ * 3D-сцена объекта (07 §3.1, T20): изометрия (ортокамера, вращение ±45°, зум, сброс),
+ * приглушённая подложка почвы с тонкой сеткой и плоским слоем TerrainOverlay по типу объекта,
+ * детализированные посты «ТОЧКА», пунктирные линии связи к БС.
  */
 
 type PostT = components['schemas']['Post']
@@ -41,9 +41,11 @@ export interface Scene3DProps {
 }
 
 const SOIL_LIGHT = '#C8AE86'
-const WOOD = '#8D6E4C'
-const TRELLIS_WIRE = '#A68B6B'
-const FOLIAGE = '#6B9B3E'
+const GRID_MAJOR = '#B89D75'
+const GRID_MINOR = '#C0A67E'
+const ROW_STRIP = '#B7A27A'
+const GREENHOUSE_LINE = '#8E887B'
+const PAD_GRAVEL = '#D4CFC5'
 const DATA_BLUE = '#2F7FD8'
 
 export function ObjectScene3D({
@@ -70,6 +72,9 @@ export function ObjectScene3D({
     return [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2]
   }, [scaled])
   const controlsRef = useRef<React.ComponentRef<typeof OrbitControls> | null>(null)
+
+  const groundSizeX = Math.max(24, ...scaled.map((p) => Math.abs(p.x - center[0]) * 2)) + 24
+  const groundSizeY = Math.max(16, ...scaled.map((p) => Math.abs(p.y - center[1]) * 2)) + 24
 
   function resetView() {
     controlsRef.current?.reset()
@@ -105,11 +110,11 @@ export function ObjectScene3D({
         <Ground
           cx={center[0]}
           cz={center[1]}
-          sizeX={Math.max(24, ...scaled.map((p) => Math.abs(p.x - center[0]) * 2)) + 24}
-          sizeY={Math.max(16, ...scaled.map((p) => Math.abs(p.y - center[1]) * 2)) + 24}
+          sizeX={groundSizeX}
+          sizeY={groundSizeY}
           onClear={() => onSelectPost(null)}
         />
-        <CropRows objectType={objectType} positions={scaled} />
+        <TerrainOverlay objectType={objectType} positions={scaled} center={center} />
         {bs.map(([x, y], i) => (
           <group key={`bs${i}`} position={[x, 0, y]}>
             {/* светлый шкаф базовой станции */}
@@ -172,101 +177,111 @@ function Ground({
   sizeY: number
   onClear: () => void
 }) {
+  const gridSize = Math.max(sizeX, sizeY)
+  const divisions = Math.max(8, Math.round(gridSize / 4))
   return (
-    <mesh
-      rotation={[-Math.PI / 2, 0, 0]}
-      position={[cx, 0, cz]}
-      onClick={(e) => {
-        e.stopPropagation()
-        onClear()
-      }}
-    >
-      <planeGeometry args={[sizeX, sizeY]} />
-      <meshStandardMaterial color={SOIL_LIGHT} roughness={0.95} />
-    </mesh>
+    <group>
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[cx, 0, cz]}
+        onClick={(e) => {
+          e.stopPropagation()
+          onClear()
+        }}
+      >
+        <planeGeometry args={[sizeX, sizeY]} />
+        <meshStandardMaterial color={SOIL_LIGHT} roughness={0.95} />
+      </mesh>
+      <gridHelper args={[gridSize, divisions, GRID_MAJOR, GRID_MINOR]} position={[cx, 0.005, cz]} />
+    </group>
   )
 }
 
-/** Ряды культур инстансингом (07 §3.1): столбы + шпалера + зелёная крона виноградника */
-function CropRows({
+/** Плоский слой разметки поверхности по типу объекта (T20) */
+function TerrainOverlay({
   objectType,
   positions,
+  center,
 }: {
   objectType?: string
   positions: Array<ScenePosition & { x: number; y: number }>
+  center: [number, number]
 }) {
-  const columns = useMemo(() => {
-    if (objectType === 'pump_station') return []
-    const items: Array<{ x: number; z: number }> = []
-    const minX = Math.min(0, ...positions.map((p) => p.x)) - 4
-    const maxX = Math.max(0, ...positions.map((p) => p.x)) + 4
-    const minY = Math.min(0, ...positions.map((p) => p.y)) - 4
-    const maxY = Math.max(0, ...positions.map((p) => p.y)) + 4
-    for (let x = minX; x <= maxX; x += 4) {
-      for (let z = minY; z <= maxY; z += 4) {
-        items.push({ x, z })
-      }
+  const bounds = useMemo(() => {
+    if (positions.length === 0) {
+      return { minX: center[0] - 8, maxX: center[0] + 8, minZ: center[1] - 6, maxZ: center[1] + 6 }
     }
-    return items
-  }, [positions, objectType])
-
-  const postsRef = useRef<THREE.InstancedMesh>(null)
-  const foliageRef = useRef<THREE.InstancedMesh>(null)
-
-  useEffect(() => {
-    const m = new THREE.Matrix4()
-    if (postsRef.current) {
-      columns.forEach((c, i) => {
-        m.setPosition(c.x, 0.75, c.z)
-        postsRef.current!.setMatrixAt(i, m)
-      })
-      postsRef.current.instanceMatrix.needsUpdate = true
+    const xs = positions.map((p) => p.x)
+    const zs = positions.map((p) => p.y)
+    return {
+      minX: Math.min(...xs) - 5,
+      maxX: Math.max(...xs) + 5,
+      minZ: Math.min(...zs) - 5,
+      maxZ: Math.max(...zs) + 5,
     }
-    if (foliageRef.current) {
-      columns.forEach((c, i) => {
-        m.setPosition(c.x, 1.05, c.z)
-        foliageRef.current!.setMatrixAt(i, m)
-      })
-      foliageRef.current.instanceMatrix.needsUpdate = true
+  }, [positions, center])
+
+  const width = Math.max(10, bounds.maxX - bounds.minX)
+  const depth = Math.max(8, bounds.maxZ - bounds.minZ)
+  const cx = (bounds.minX + bounds.maxX) / 2
+  const cz = (bounds.minZ + bounds.maxZ) / 2
+
+  if (objectType === 'vineyard' || objectType === 'orchard' || objectType === 'field') {
+    const step = objectType === 'field' ? 3.5 : 2.6
+    const strips: number[] = []
+    for (let z = bounds.minZ + 1; z <= bounds.maxZ - 1; z += step) {
+      strips.push(z)
     }
-  }, [columns])
+    return (
+      <group>
+        {strips.map((z, i) => (
+          <mesh key={i} rotation={[-Math.PI / 2, 0, 0]} position={[cx, 0.01, z]}>
+            <planeGeometry args={[width, 0.85]} />
+            <meshBasicMaterial color={ROW_STRIP} transparent opacity={0.55} />
+          </mesh>
+        ))}
+      </group>
+    )
+  }
 
-  if (objectType === 'pump_station') return null
+  if (objectType === 'greenhouse') {
+    const bays = 4
+    const bayStep = width / bays
+    const y = 0.02
+    const outline: Array<[number, number, number]> = [
+      [bounds.minX, y, bounds.minZ],
+      [bounds.maxX, y, bounds.minZ],
+      [bounds.maxX, y, bounds.maxZ],
+      [bounds.minX, y, bounds.maxZ],
+      [bounds.minX, y, bounds.minZ],
+    ]
+    return (
+      <group>
+        <Line points={outline} color={GREENHOUSE_LINE} lineWidth={1.5} />
+        {Array.from({ length: bays - 1 }, (_, i) => {
+          const x = bounds.minX + bayStep * (i + 1)
+          return (
+            <Line
+              key={i}
+              points={[
+                [x, y, bounds.minZ],
+                [x, y, bounds.maxZ],
+              ]}
+              color={GREENHOUSE_LINE}
+              lineWidth={1}
+            />
+          )
+        })}
+      </group>
+    )
+  }
 
+  // meteo, pump_station, other, undefined — чистая почва + светло-серая площадка под зоной постов
   return (
-    <group>
-      {/* столбы шпалеры */}
-      <instancedMesh
-        ref={postsRef}
-        args={[
-          undefined as unknown as THREE.BufferGeometry,
-          undefined as unknown as THREE.Material,
-          Math.max(1, columns.length),
-        ]}
-      >
-        <boxGeometry args={[0.16, 1.5, 0.16]} />
-        <meshStandardMaterial color={WOOD} roughness={0.85} />
-      </instancedMesh>
-      {/* зелёная крона виноградной лозы */}
-      <instancedMesh
-        ref={foliageRef}
-        args={[
-          undefined as unknown as THREE.BufferGeometry,
-          undefined as unknown as THREE.Material,
-          Math.max(1, columns.length),
-        ]}
-      >
-        <boxGeometry args={[3.4, 0.75, 0.55]} />
-        <meshStandardMaterial color={FOLIAGE} roughness={0.8} />
-      </instancedMesh>
-      {/* шпалера: горизонтальные перекладины по X */}
-      {columns.map((c, i) => (
-        <mesh key={i} position={[c.x, 1.48, c.z]}>
-          <boxGeometry args={[3.8, 0.05, 0.05]} />
-          <meshStandardMaterial color={TRELLIS_WIRE} roughness={0.7} />
-        </mesh>
-      ))}
-    </group>
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[cx, 0.01, cz]}>
+      <planeGeometry args={[width, depth]} />
+      <meshStandardMaterial color={PAD_GRAVEL} roughness={0.95} />
+    </mesh>
   )
 }
 
