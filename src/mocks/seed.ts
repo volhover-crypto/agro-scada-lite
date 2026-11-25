@@ -81,18 +81,30 @@ export function makeTagId(eui: string, code: number, level: number, no: number):
   return `${eui}/${code}/${level}/${no}`
 }
 
-/** Смещение в метрах → lat/lon (около 44.53, 33.70) */
-function at(
-  baseLat: number,
-  baseLon: number,
-  xM: number,
-  yM: number,
-): { lat: number; lon: number } {
-  return {
-    lat: +(baseLat + yM / 111_320).toFixed(6),
-    lon: +(baseLon + xM / (111_320 * Math.cos((baseLat * Math.PI) / 180))).toFixed(6),
-  }
-}
+/**
+ * Координаты постов в области 1-го отделения «Золотой Балки» (Севастополь):
+ * lat 44.5180..44.5375, lon 33.5650..33.6150
+ */
+const VINEYARD_COORDS: ReadonlyArray<readonly [number, number]> = [
+  [44.5335, 33.5715],
+  [44.5318, 33.5752],
+  [44.5289, 33.5734],
+  [44.5262, 33.5778],
+  [44.5326, 33.5824],
+  [44.5294, 33.5848],
+  [44.5271, 33.5812],
+  [44.5305, 33.5985],
+  [44.5282, 33.6034],
+  [44.5258, 33.6078],
+  [44.5241, 33.6002],
+  [44.5266, 33.5955],
+]
+
+const PUMP_COORDS: ReadonlyArray<readonly [number, number]> = [
+  [44.5224, 33.5908],
+  [44.5218, 33.5926],
+  [44.5231, 33.5892],
+]
 
 export function displayName(code: number, level: number, no: number): string {
   const p = paramByCode(code)
@@ -108,7 +120,8 @@ export function buildSeed(): Seed {
     farm_id: 1,
     name: 'Виноградник Золотая Балка',
     object_type: 'vineyard',
-    ...at(44.5301, 33.6998, 0, 0),
+    lat: 44.5285,
+    lon: 33.591,
     tz: 'Europe/Moscow',
   } as Obj
   const OBJ2 = {
@@ -116,17 +129,18 @@ export function buildSeed(): Seed {
     farm_id: 1,
     name: 'Насосная-1',
     object_type: 'pump_station',
-    ...at(44.5345, 33.703, 420, 480),
+    lat: 44.5224,
+    lon: 33.5908,
     tz: 'Europe/Moscow',
   } as Obj
 
-  // 12 постов виноградника: сетка 4×3 с шагом 130 м; 3 поста насосной рядом
+  // 12 постов виноградника в кварталах 1-го отделения «Золотой Балки»; 3 поста насосной у водоёмов
   const plots = ['Участок А', 'Участок Б', 'Участок В']
   const posts: PostT[] = []
   for (let i = 0; i < 12; i++) {
     const col = i % 4
     const row = Math.floor(i / 4)
-    const { lat, lon } = at(44.5301, 33.6998, col * 130, row * 130)
+    const [lat, lon] = VINEYARD_COORDS[i]!
     posts.push({
       id: i + 1,
       object_id: 1,
@@ -141,7 +155,7 @@ export function buildSeed(): Seed {
   }
   const pumpPlots = ['Машинный зал', 'Байпас', 'Резервуар']
   for (let i = 0; i < 3; i++) {
-    const { lat, lon } = at(44.5345, 33.703, 20 + i * 30, -15 + i * 15)
+    const [lat, lon] = PUMP_COORDS[i]!
     posts.push({
       id: 13 + i,
       object_id: 2,

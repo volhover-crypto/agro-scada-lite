@@ -1,4 +1,5 @@
-import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet'
+import { useEffect } from 'react'
+import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import { Link } from 'react-router'
 import type { components } from '@/api/types.gen'
@@ -31,12 +32,27 @@ function postIcon(status: string): L.DivIcon {
   })
 }
 
+function FitPostsBounds({ coords }: { coords: Array<[number, number]> }) {
+  const map = useMap()
+  useEffect(() => {
+    if (coords.length === 0) return
+    if (coords.length === 1) {
+      map.setView(coords[0]!, 15)
+      return
+    }
+    map.fitBounds(L.latLngBounds(coords), { padding: [32, 32], maxZoom: 15 })
+  }, [map, coords])
+  return null
+}
+
 export function ObjectMap({ posts, objectId }: { posts: PostT[]; objectId: number }) {
   const withCoords = posts.filter(
     (p): p is PostT & { lat: number; lon: number } => p.lat != null && p.lon != null,
   )
   const first = withCoords[0]
   if (!first) return <p>{ru.widgets.noData}</p>
+
+  const coords: Array<[number, number]> = withCoords.map((p) => [p.lat, p.lon])
 
   return (
     <div>
@@ -46,6 +62,7 @@ export function ObjectMap({ posts, objectId }: { posts: PostT[]; objectId: numbe
           attribution="&copy; OpenStreetMap"
           url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+        <FitPostsBounds coords={coords} />
         {withCoords.map((p) => (
           <Marker key={p.id} position={[p.lat, p.lon]} icon={postIcon(p.worst_status ?? 'ok')}>
             <Popup>
