@@ -57,6 +57,7 @@ export function objectTypeLabel(type: string | undefined): string {
     orchard: 'Сад',
     greenhouse: 'Теплица',
     pump_station: 'Насосная',
+    meteo: 'Метеостанция',
     field: 'Поле',
     other: 'Объект',
   }

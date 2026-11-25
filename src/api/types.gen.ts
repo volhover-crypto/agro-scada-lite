@@ -1299,7 +1299,8 @@ export interface components {
             /** @example Насосная-1 */
             name?: string;
             /** @enum {string} */
-            object_type?: "vineyard" | "orchard" | "greenhouse" | "pump_station" | "field" | "other";
+            // TODO: regen from API v1.1 — 'meteo' добавлен вручную, в contract/03_API_CONTRACT.yaml (v1.0.0) его ещё нет
+            object_type?: "vineyard" | "orchard" | "greenhouse" | "pump_station" | "field" | "meteo" | "other";
             lat?: number;
             lon?: number;
             /** @example Europe/Moscow */
