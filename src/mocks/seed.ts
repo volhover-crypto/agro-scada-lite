@@ -126,7 +126,9 @@ export function buildSeed(): Seed {
   for (let i = 0; i < 12; i++) {
     const col = i % 4
     const row = Math.floor(i / 4)
-    const { lat, lon } = at(44.5301, 33.6998, col * 130, row * 130)
+    // Точки на карте разбросаны по территории виноградника (детерминированный rnd);
+    // сетка сохранена только в scene_x/y для 3D-сцены
+    const { lat, lon } = at(44.5301, 33.6998, rnd() * 420 - 40, rnd() * 380 - 40)
     posts.push({
       id: i + 1,
       object_id: 1,
